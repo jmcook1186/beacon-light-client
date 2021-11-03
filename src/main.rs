@@ -9,10 +9,10 @@ use reqwest::{
 
 // STRUCTS
 
-// pub struct SyncCommittee {
-//   pub pubkeys: Vector<BLSPubkey, SYNC_COMMITTEE_SIZE>,
-//   pub aggregate_pubkey: BLSPubkey,
-// }
+pub struct SyncCommittee {
+  pub pubkeys: Vec<Vec<u8>>,
+  pub aggregate_pubkey: Vec<u8>,
+}
 
 // struct LightClientSnapshot{
 //     pub header: String,
@@ -90,54 +90,60 @@ use reqwest::{
 
 
 
+fn grab_data(){
+
+}
+
+
 fn main(){
     
+    // set basic vars and get api key from secret
     let max_epochs_to_store: i8 = 10;
     let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
     let state_id = String::from("head");
     let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope");
 
-  
-    //let store: LightClientStore = initialize_store(&node_id);
-    
-    // println!("Store object initialized.\n First finalized header = ");
-    // println!("{}", store.snapshot.header.to_string());
-    // println!("{}", store.snapshot.current_sync_committee.to_string());
-    // println!("{}", store.snapshot.next_sync_committee.to_string());
+    println!("api key = {}",&api_key.to_string());
 
-    // let (validators, aggregate) = http_requests::get_sync_committee(&node_id, &state_id);
-    
-    // println!("validators\n\n{}\n\n",validators);
-    // println!("validators\n\n{}validators\n\n", aggregate);
-
-    // println!("current commitee:");
-    // println!("{}\n\n", store.snapshot.current_sync_committee.to_string());
-    
-    // println!("next snapshot commitee:");
-    // println!("{}", store.snapshot.next_sync_committee.to_string());
-
-    println!("{}",&api_key.to_string());
-
+    // get list of validators included in sync commitee 
     let endpoint = format!("beacon/states/{}/sync_committees",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
-
+    
+    // grab the validator ids only and parse them as u8s to vector validators_vec
     let validators = result["data"]["validators"].to_string();
     let validators_trimmed = &validators[1..validators.len() - 1].replace("\"", "");
-    let validators_vec: Vec<u16> = validators_trimmed.split(",").map(|x| x.parse::<u16>().unwrap()).collect();
-     
+    let validators_vec: Vec<u8> = validators_trimmed.split(",").map(|x| x.parse::<u8>().unwrap()).collect();
+    assert_eq!(validators_vec.len(), 512);
+    
+    // grab the validator info from the /validators endpoint - includes validator's pubkeys
     let endpoint = format!("beacon/states/{}/validators",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
 
+    // for the validators included in the sync committee, get their pubkeys and parse as u8
+    let mut pubkeys_str = Vec::new();
     
+    // first traverse the json to find the right data, then remove quotation marks
     for i in validators_vec{
-        println!("{}",result["data"][i as usize]["validator"]["pubkey"].to_string());
+        pubkeys_str.push(result["data"][i as usize]["validator"]["pubkey"].to_string().replace("\"", ""));
+    }
+    // now recast as u8 bytes and push to pubkeys vec
+    let mut pubkeys = Vec::new();
+    for i in pubkeys_str{
+        pubkeys.push(i.into_bytes());
     }
 
+    let endpoint = format!("beacon/headers/{}",state_id);
+    let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+    let root = result["data"]["root"].to_string().replace("\"", "");
+    let agg_sig = result["data"]["header"]["signature"].to_string().replace("\"", "");
 
-    
+    // now recast as u8 bytes and push to pubkeys vec
+    let mut aggKey = agg_sig.into_bytes();
 
-    
+    let sync_committee = SyncCommittee{pubkeys: pubkeys, aggregate_pubkey: aggKey};
 
+
+    println!("{}", sync_committee.aggregate_pubkey.to_string());
     
     //let pubKeys = http_requests::get_all_validators(&node_id, &state_id, &current_sync_committee, _headers);
 
