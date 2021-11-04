@@ -10,6 +10,8 @@ The initial aim of this repository is to build a prototype Beacon Chain light cl
 To begin with the light client will follow a server/client model. The relevant information required for a light client is available by http requests to an active Beacon node. A light client server will make those requests and assemble them into light client update objects, which will then be served to the light client itself.
 
 
+Puibkeys are 96 byte BLSPubkeys
+
 ## Instructions
 
 First spin up a local testnet using Ganache as the execution layer

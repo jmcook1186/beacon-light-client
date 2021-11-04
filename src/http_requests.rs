@@ -25,7 +25,7 @@ pub fn get_request_auth_header(api_key: &str)-> Result<HeaderMap, Box<dyn Error>
 
 
 #[tokio::main]
-pub async fn generic_request(api_key: &str, endpoint: &str, node_id: &String)-> Result<serde_json::Value,reqwest::Error>{
+pub async fn generic_request(api_key: &str, endpoint: &str, node_id: &str)-> Result<serde_json::Value,reqwest::Error>{
   
   let prefix: String = format!("http://localhost:{}/eth/v1/",node_id);
   let url: String = prefix+endpoint;
