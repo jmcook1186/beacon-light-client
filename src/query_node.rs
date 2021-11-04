@@ -1,16 +1,11 @@
 use std::format;
-use std::fs;
-use serde_json::{Value};
-use reqwest::{
-  header::{HeaderMap, HeaderValue}};
 use crate::http_requests;
-
 
 
 pub fn get_sync_committee_ids(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
 
     // get list of validators included in sync commitee 
-    let endpoint = format!("beacon/states/{}/sync_committees",state_id);
+    let endpoint = format!("v1/beacon/states/{}/sync_committees",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
     
     // grab the validator ids only and parse them as u8s to vector validators_vec
@@ -26,7 +21,7 @@ pub fn get_sync_committee_ids(api_key: &str, node_id: &str, state_id: &str)->Vec
 pub fn get_sync_committee_pubkeys(api_key: &str, node_id: &str, state_id: &str, validator_ids: Vec<u8>)->Vec<Vec<u8>>{
 
     // grab the validator info from the /validators endpoint - includes validator's pubkeys
-    let endpoint = format!("beacon/states/{}/validators",state_id);
+    let endpoint = format!("v1/beacon/states/{}/validators",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
 
     // for the validators included in the sync committee, get their pubkeys and parse as u8
@@ -56,14 +51,26 @@ pub fn get_sync_committee_pubkeys(api_key: &str, node_id: &str, state_id: &str, 
 
 pub fn get_block_header_info(api_key: &str, node_id: &str, state_id: &str)->(String, String, Vec<u8>){
 
-    let endpoint = format!("beacon/headers/{}",state_id);
+    let endpoint = format!("v1/beacon/headers/{}",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
     let header = result.to_string();
     let root = result["data"]["root"].to_string().replace("\"", "");
     let agg_sig = result["data"]["header"]["signature"].to_string().replace("\"", "");
 
     // now recast as u8 bytes and push to pubkeys vec
-    let mut aggKey = agg_sig.into_bytes();
+    let aggregate_sig = agg_sig.into_bytes();
 
-    return (header, root, aggKey)
+    return (header, root, aggregate_sig)
+}
+
+pub fn get_state_object(api_key: &str, node_id: &str, state_id: &str)->(String, String, String, String){
+
+    let endpoint = format!("v2/debug/beacon/states/{}",state_id);
+    let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+    let current_sync_committee_pubkeys = result["data"]["current_sync_committee"]["pubkeys"].to_string();
+    let current_aggregate_pubkey = result["data"]["current_sync_committee"]["aggregate_pubkey"].to_string();
+    let next_sync_committee_pubkeys = result["data"]["next_sync_committee"]["pubkeys"].to_string();
+    let next_aggregate_pubkey = result["data"]["aggregate_pubkey"].to_string();
+
+    return (current_sync_committee_pubkeys, current_aggregate_pubkey, next_sync_committee_pubkeys, next_aggregate_pubkey)
 }

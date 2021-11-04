@@ -1,24 +1,25 @@
 use std::format;
 use std::fs;
-use serde_json::{Value};
 mod node_discovery;
 mod http_requests;
 mod query_node;
-use reqwest::{
-  header::{HeaderMap, HeaderValue}};
-
+use std::mem;
 
 // STRUCTS
 
 pub struct SyncCommittee {
-  pub pubkeys: Vec<Vec<u8>>,
-  pub aggregate_pubkey: Vec<u8>,
+  pub pubkeys: String,
+  pub aggregate_pubkey: String,
+}
+
+pub struct BeaconBlockHeader{
+
 }
 
 // struct LightClientSnapshot{
 //     pub header: String,
-//     pub current_sync_committee: String,
-//     pub next_sync_committee: String
+//     pub current_sync_committee: SyncCommittee,
+//     pub next_sync_committee: SyncCommittee
 // }
 
 // struct LightClientStore{
@@ -94,25 +95,31 @@ pub struct SyncCommittee {
 
 fn main(){
     
-
-    for i in ["finalized", "head"]{
+    for i in ["finalized"]{
 
     // set basic vars and get api key from secret
-        let max_epochs_to_store: i8 = 10;
         let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
         let state_id = String::from(i);
         let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope");
 
         println!("api key = {}",&api_key.to_string());
 
-        let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
-        let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
-        let (block_header, block_root, aggregate_signature) = query_node::get_block_header_info(&api_key, &node_id, &state_id);
+        // let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
+        // let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
+        // let (block_header, block_root, aggregate_signature) = query_node::get_block_header_info(&api_key, &node_id, &state_id);
+        
+        // println!("{}",sync_committee_pubkeys[0].len());
+        // println!("{}",block_header);
+        let (current_sync_committee_pubkeys, current_aggregate_pubkey, next_sync_committee_pubkeys, next_aggregate_pubkey) = 
+          query_node::get_state_object(&api_key, &node_id, &state_id);
 
-        println!("{}",block_header);
+        let current_sync_committee = SyncCommittee{pubkeys: current_sync_committee_pubkeys, aggregate_pubkey: current_aggregate_pubkey};
+        let next_sync_committee = SyncCommittee{pubkeys: next_sync_committee_pubkeys, aggregate_pubkey: next_aggregate_pubkey};
+        //let state = query_node::get_state_object(&api_key, &node_id, &state_id);
+        println!("current sync committee aggregate pubkey:\n {}\n\n", current_sync_committee.aggregate_pubkey);
+        // println!("current aggregate key {}", current_aggregate_pubkey);
 
-        let sync_committee = SyncCommittee{pubkeys: sync_committee_pubkeys, aggregate_pubkey: aggregate_signature};
-    
+
     }
     
 }
