@@ -94,22 +94,26 @@ pub struct SyncCommittee {
 
 fn main(){
     
+
+    for i in ["finalized", "head"]{
+
     // set basic vars and get api key from secret
-    let max_epochs_to_store: i8 = 10;
-    let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
-    let state_id = String::from("finalized");
-    let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope");
+        let max_epochs_to_store: i8 = 10;
+        let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
+        let state_id = String::from(i);
+        let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope");
 
-    println!("api key = {}",&api_key.to_string());
+        println!("api key = {}",&api_key.to_string());
 
-    let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
-    let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
-    let (block_header, block_root, aggregate_signature) = query_node::get_block_header_info(&api_key, &node_id, &state_id);
+        let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
+        let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
+        let (block_header, block_root, aggregate_signature) = query_node::get_block_header_info(&api_key, &node_id, &state_id);
 
-    println!("{}",block_header);
+        println!("{}",block_header);
 
-    let sync_committee = SyncCommittee{pubkeys: sync_committee_pubkeys, aggregate_pubkey: aggregate_signature};
-
+        let sync_committee = SyncCommittee{pubkeys: sync_committee_pubkeys, aggregate_pubkey: aggregate_signature};
+    
+    }
     
 }
 
