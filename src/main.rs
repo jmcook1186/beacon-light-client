@@ -13,8 +13,14 @@ pub struct SyncCommittee {
 }
 
 pub struct BeaconBlockHeader{
-
+    pub slot: u32,
+    pub proposer_index: u32,
+    pub parent_root: String,
+    pub state_root: String,
+    pub body_root: String,
 }
+
+
 
 // struct LightClientSnapshot{
 //     pub header: String,
@@ -106,18 +112,17 @@ fn main(){
 
         // let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
         // let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
-        // let (block_header, block_root, aggregate_signature) = query_node::get_block_header_info(&api_key, &node_id, &state_id);
+        let block_header = query_node::get_block_header_info(&api_key, &node_id, &state_id);
         
         // println!("{}",sync_committee_pubkeys[0].len());
         // println!("{}",block_header);
-        let (current_sync_committee_pubkeys, current_aggregate_pubkey, next_sync_committee_pubkeys, next_aggregate_pubkey) = 
-          query_node::get_state_object(&api_key, &node_id, &state_id);
+        let (current_sync_committee, next_sync_committee) = 
+          query_node::get_sync_committees(&api_key, &node_id, &state_id);
 
-        let current_sync_committee = SyncCommittee{pubkeys: current_sync_committee_pubkeys, aggregate_pubkey: current_aggregate_pubkey};
-        let next_sync_committee = SyncCommittee{pubkeys: next_sync_committee_pubkeys, aggregate_pubkey: next_aggregate_pubkey};
-        //let state = query_node::get_state_object(&api_key, &node_id, &state_id);
+        
+        // some basic print checks
+        println!("state root\n\n{}",block_header.state_root);
         println!("current sync committee aggregate pubkey:\n {}\n\n", current_sync_committee.aggregate_pubkey);
-        // println!("current aggregate key {}", current_aggregate_pubkey);
 
 
     }
