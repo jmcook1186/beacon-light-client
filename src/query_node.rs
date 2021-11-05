@@ -1,72 +1,59 @@
 use std::format;
 use crate::http_requests;
-
-pub struct SyncCommittee {
-    pub pubkeys: String,
-    pub aggregate_pubkey: String,
-  }
-  
-
-pub struct BeaconBlockHeader{
-    pub slot: u32,
-    pub proposer_index: u32,
-    pub parent_root: String,
-    pub state_root: String,
-    pub body_root: String,
-}
+use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee};
 
 
-pub fn get_sync_committee_ids(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
+// pub fn get_sync_committee_ids(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
 
-    // get list of validators included in sync commitee 
-    let endpoint = format!("v1/beacon/states/{}/sync_committees",state_id);
-    let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+//     // get list of validators included in sync commitee 
+//     let endpoint = format!("v1/beacon/states/{}/sync_committees",state_id);
+//     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
     
-    // grab the validator ids only and parse them as u8s to vector validators_vec
-    let validators = result["data"]["validators"].to_string();
-    let _trimmed = &validators[1..validators.len() - 1].replace("\"", "");
-    let validator_ids: Vec<u8> = _trimmed.split(",").map(|x| x.parse::<u8>().unwrap()).collect();
-    assert_eq!(validator_ids.len(), 512);
+//     // grab the validator ids only and parse them as u8s to vector validators_vec
+//     let validators = result["data"]["validators"].to_string();
+//     let _trimmed = &validators[1..validators.len() - 1].replace("\"", "");
+//     let validator_ids: Vec<u8> = _trimmed.split(",").map(|x| x.parse::<u8>().unwrap()).collect();
+//     assert_eq!(validator_ids.len(), 512);
 
-    return validator_ids
-}
+//     return validator_ids
+// }
 
 
-pub fn get_sync_committee_pubkeys(api_key: &str, node_id: &str, state_id: &str, validator_ids: Vec<u8>)->Vec<Vec<u8>>{
+// pub fn get_sync_committee_pubkeys(api_key: &str, node_id: &str, state_id: &str, validator_ids: Vec<u8>)->Vec<Vec<u8>>{
 
-    // grab the validator info from the /validators endpoint - includes validator's pubkeys
-    let endpoint = format!("v1/beacon/states/{}/validators",state_id);
-    let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+//     // grab the validator info from the /validators endpoint - includes validator's pubkeys
+//     let endpoint = format!("v1/beacon/states/{}/validators",state_id);
+//     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
 
-    // for the validators included in the sync committee, get their pubkeys and parse as u8
-    let mut pubkeys_str = Vec::new();
+//     // for the validators included in the sync committee, get their pubkeys and parse as u8
+//     let mut pubkeys_str = Vec::new();
     
     
-    for i in validator_ids{
-        // if validator is in sync committee AND status is active
-        // first traverse the json to find the right data, 
-        // then remove quotation marks
-        if result["data"][i as usize]["status"].to_string().contains("active"){
-        pubkeys_str.push(result["data"][i as usize]["validator"]["pubkey"].to_string().replace("\"", ""));
-        }
+//     for i in validator_ids{
+//         // if validator is in sync committee AND status is active
+//         // first traverse the json to find the right data, 
+//         // then remove quotation marks
+//         if result["data"][i as usize]["status"].to_string().contains("active"){
+//         pubkeys_str.push(result["data"][i as usize]["validator"]["pubkey"].to_string().replace("\"", ""));
+//         }
 
-    }
+//     }
 
-    // now recast as u8 bytes and push to pubkeys vec
-    let mut pubkeys = Vec::new();
-    for i in pubkeys_str{
-        pubkeys.push(i.into_bytes());
-    }
+//     // now recast as u8 bytes and push to pubkeys vec
+//     let mut pubkeys = Vec::new();
+//     for i in pubkeys_str{
+//         pubkeys.push(i.into_bytes());
+//     }
 
-    return pubkeys
+//     return pubkeys
 
-}
-
-
+// }
 
 
 
-pub fn get_block_header_info(api_key: &str, node_id: &str, state_id: &str)->(BeaconBlockHeader){
+
+
+pub fn get_block_header(api_key: &str, node_id: &str, state_id: &str)->(BeaconBlockHeader){
 
     let endpoint = format!("v1/beacon/headers/{}",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
@@ -74,7 +61,6 @@ pub fn get_block_header_info(api_key: &str, node_id: &str, state_id: &str)->(Bea
     let _slot = result["data"]["header"]["message"]["slot"].to_string();
     let _trimmed = &_slot.replace("\"", "");
     let slot = _trimmed.parse::<u32>().unwrap();
-
 
 
     let _proposer_index = result["data"]["header"]["message"]["proposer_index"].to_string();
@@ -92,6 +78,7 @@ pub fn get_block_header_info(api_key: &str, node_id: &str, state_id: &str)->(Bea
 
     return beacon_block_header
 }
+
 
 pub fn get_sync_committees(api_key: &str, node_id: &str, state_id: &str)->(SyncCommittee, SyncCommittee){
 

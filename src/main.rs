@@ -3,57 +3,11 @@ use std::fs;
 mod node_discovery;
 mod http_requests;
 mod query_node;
+mod types;
+mod build_objects;
 use std::mem;
 
-// STRUCTS
 
-pub struct SyncCommittee {
-  pub pubkeys: String,
-  pub aggregate_pubkey: String,
-}
-
-pub struct BeaconBlockHeader{
-    pub slot: u32,
-    pub proposer_index: u32,
-    pub parent_root: String,
-    pub state_root: String,
-    pub body_root: String,
-}
-
-
-
-// struct LightClientSnapshot{
-//     pub header: String,
-//     pub current_sync_committee: SyncCommittee,
-//     pub next_sync_committee: SyncCommittee
-// }
-
-// struct LightClientStore{
-
-//     snapshot: LightClientSnapshot,
-//     valid_updates: Option <LightClientUpdate>
-
-// }
-
-
-// struct LightClientUpdate{
-//     // Update beacon block header
-//     header: String, //BeaconBlockHeader,
-//     // Next sync committee corresponding to the header
-//     next_sync_committee: String, //SyncCommittee,
-// //     next_sync_committee_branch: vec, //Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)],
-// //     // Finality proof for the update header
-// //     finality_header: String, //BeaconBlockHeader,
-// //     finality_branch: vec, //Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)],
-// //     // Sync committee aggregate signature
-// //     sync_committee_bits: vec, //Bitvector[SYNC_COMMITTEE_SIZE],
-// //     sync_committee_signature: String, //BLSSignature,
-// //     // Fork version for the aggregate signature
-// //     fork_version: String//Version
-// }
-
-
-// // FUNCS
 
 //fn initialize_store(node_id: &String)-> LightClientStore{
     
@@ -112,19 +66,19 @@ fn main(){
 
         // let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
         // let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
-        let block_header = query_node::get_block_header_info(&api_key, &node_id, &state_id);
+        let block_header = query_node::get_block_header(&api_key, &node_id, &state_id);
         
         // println!("{}",sync_committee_pubkeys[0].len());
         // println!("{}",block_header);
         let (current_sync_committee, next_sync_committee) = 
           query_node::get_sync_committees(&api_key, &node_id, &state_id);
 
+       
+        let snapshot = build_objects::get_snapshot(block_header, current_sync_committee, next_sync_committee);
         
-        // some basic print checks
-        println!("state root\n\n{}",block_header.state_root);
-        println!("current sync committee aggregate pubkey:\n {}\n\n", current_sync_committee.aggregate_pubkey);
-
-
+        // basic test print statements
+        println!("{}", snapshot.header.state_root.to_string());
+        println!("{}", snapshot.current_sync_committee.aggregate_pubkey.to_string());
     }
     
 }
