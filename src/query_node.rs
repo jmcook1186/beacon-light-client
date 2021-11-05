@@ -1,59 +1,10 @@
 use std::format;
 use crate::http_requests;
-use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee};
-
-
-// pub fn get_sync_committee_ids(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
-
-//     // get list of validators included in sync commitee 
-//     let endpoint = format!("v1/beacon/states/{}/sync_committees",state_id);
-//     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
-    
-//     // grab the validator ids only and parse them as u8s to vector validators_vec
-//     let validators = result["data"]["validators"].to_string();
-//     let _trimmed = &validators[1..validators.len() - 1].replace("\"", "");
-//     let validator_ids: Vec<u8> = _trimmed.split(",").map(|x| x.parse::<u8>().unwrap()).collect();
-//     assert_eq!(validator_ids.len(), 512);
-
-//     return validator_ids
-// }
-
-
-// pub fn get_sync_committee_pubkeys(api_key: &str, node_id: &str, state_id: &str, validator_ids: Vec<u8>)->Vec<Vec<u8>>{
-
-//     // grab the validator info from the /validators endpoint - includes validator's pubkeys
-//     let endpoint = format!("v1/beacon/states/{}/validators",state_id);
-//     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
-
-//     // for the validators included in the sync committee, get their pubkeys and parse as u8
-//     let mut pubkeys_str = Vec::new();
-    
-    
-//     for i in validator_ids{
-//         // if validator is in sync committee AND status is active
-//         // first traverse the json to find the right data, 
-//         // then remove quotation marks
-//         if result["data"][i as usize]["status"].to_string().contains("active"){
-//         pubkeys_str.push(result["data"][i as usize]["validator"]["pubkey"].to_string().replace("\"", ""));
-//         }
-
-//     }
-
-//     // now recast as u8 bytes and push to pubkeys vec
-//     let mut pubkeys = Vec::new();
-//     for i in pubkeys_str{
-//         pubkeys.push(i.into_bytes());
-//     }
-
-//     return pubkeys
-
-// }
+use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee, LightClientUpdate};
 
 
 
-
-
-pub fn get_block_header(api_key: &str, node_id: &str, state_id: &str)->(BeaconBlockHeader){
+pub fn get_block_header(api_key: &str, node_id: &str, state_id: &str)->BeaconBlockHeader{
 
     let endpoint = format!("v1/beacon/headers/{}",state_id);
     let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
@@ -93,4 +44,38 @@ pub fn get_sync_committees(api_key: &str, node_id: &str, state_id: &str)->(SyncC
     let next_sync_committee = SyncCommittee{pubkeys: next_sync_committee_pubkeys, aggregate_pubkey: next_aggregate_pubkey};
 
     return (current_sync_committee, next_sync_committee)
+}
+
+
+pub fn get_update(api_key: &str, node_id: &str)->LightClientUpdate{
+
+    let state_id = "head";
+    let current_header = get_block_header(&api_key, &node_id, &"finalized".to_string());
+    let next_header = get_block_header(&api_key, &node_id, &state_id);
+    let (current_sync_committee, next_sync_committee) = get_sync_committees(&api_key, &node_id, &state_id);
+
+    let endpoint = format!("v2/debug/beacon/states/{}",state_id);
+    let result: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+
+    let branch = vec![0,1,2,3,4,5];
+    let finality_header = current_header;
+    let finality_branch =vec![0,1,2,3,4,5];
+    let sync_committee_bits = vec![0,1,2,3,4,5];
+    let fork = result["data"]["fork"].to_string();
+    let sync_sig = &next_sync_committee.aggregate_pubkey.to_string();
+    let sync_pubkeys = &next_sync_committee.pubkeys.to_string();
+
+    let update =  LightClientUpdate{
+        header: next_header,
+        next_sync_committee: next_sync_committee,
+        next_sync_committee_branch: branch,
+        finality_header: finality_header,
+        finality_branch: finality_branch,
+        sync_committee_bits: sync_committee_bits,
+        sync_committee_signature: sync_sig.to_string(),
+        fork_version: fork,
+    };
+
+    return update
+
 }
