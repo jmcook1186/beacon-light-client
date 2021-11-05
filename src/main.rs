@@ -51,35 +51,16 @@ use std::mem;
 //}
 
 
-
-
 fn main(){
     
-    for i in ["finalized"]{
-
     // set basic vars and get api key from secret
-        let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
-        let state_id = String::from(i);
-        let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope");
+    let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
+    let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope"); 
+    let trusted_snapshot = build_objects::sync_finalized(&api_key, &node_id);
 
-        println!("api key = {}",&api_key.to_string());
-
-        // let validator_ids: Vec<u8> = query_node::get_sync_committee_ids(&api_key, &node_id, &state_id);
-        // let sync_committee_pubkeys: Vec<Vec<u8>> = query_node::get_sync_committee_pubkeys(&api_key, &node_id, &state_id, validator_ids);
-        let block_header = query_node::get_block_header(&api_key, &node_id, &state_id);
-        
-        // println!("{}",sync_committee_pubkeys[0].len());
-        // println!("{}",block_header);
-        let (current_sync_committee, next_sync_committee) = 
-          query_node::get_sync_committees(&api_key, &node_id, &state_id);
-
-       
-        let snapshot = build_objects::get_snapshot(block_header, current_sync_committee, next_sync_committee);
-        
-        // basic test print statements
-        println!("{}", snapshot.header.state_root.to_string());
-        println!("{}", snapshot.current_sync_committee.aggregate_pubkey.to_string());
-    }
+    // basic test print statements
+    println!("{}", trusted_snapshot.header.state_root.to_string());
+    println!("{}", trusted_snapshot.current_sync_committee.aggregate_pubkey.to_string());
     
 }
 
