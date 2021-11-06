@@ -7,7 +7,7 @@ mod types;
 mod build_objects;
 use std::mem;
 use std::option;
-
+use crate::types::{BeaconBlockHeader,LightClientStore, LightClientSnapshot, SyncCommittee, LightClientUpdate};
 
 
 
@@ -16,17 +16,35 @@ fn main(){
     // set basic vars and get api key from secret
     let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
     let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope"); 
-    let initial_snapshot = build_objects::initial_snapshot(&api_key, &node_id);
 
-    // basic test print statements
-    println!("{}", initial_snapshot.header.state_root.to_string());
-    println!("{}", initial_snapshot.current_sync_committee.aggregate_pubkey.to_string());
+    let store = initialize(&api_key, &node_id);
+    let new_store = update(store, &api_key, &node_id);
 
-    let initial_store = build_objects::initialize_store(initial_snapshot);
-
-
-    let next_snapshot = build_objects::next_snapshot(initial_store, &api_key, &node_id);
-    let update = query_node::get_update(&api_key, &node_id);
+    println!("{}", new_store.valid_updates.unwrap().header.body_root.to_string())
 
 }
 
+
+
+
+pub fn initialize(api_key: &str, node_id: &str)->LightClientStore{
+    let state_id = "finalized".to_string();
+    let current_state = query_node::get_full_state_object(&api_key, &node_id, &state_id);
+    let current_snapshot = build_objects::make_snapshot(&current_state);
+    let store = build_objects::initialize_store(current_snapshot);
+
+    return store
+}
+
+
+pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->LightClientStore{
+    
+    let state_id = "head".to_string();
+    let new_state = query_node::get_full_state_object(&api_key, &node_id, &state_id);
+    let new_snapshot = build_objects::make_snapshot(&new_state);
+    let update = build_objects::get_update(&new_state, &new_snapshot);
+    
+    let new_store = build_objects::update_store(new_snapshot, Some(update));
+
+    return new_store
+}
