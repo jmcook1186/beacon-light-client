@@ -38,6 +38,7 @@ pub fn make_snapshot(state: &serde_json::Value)-> LightClientSnapshot{
 
 
 pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
+    
     // initialize with empty update vec
     let empty_updates: Vec<LightClientUpdate> = vec![];
 
@@ -59,7 +60,6 @@ pub fn update_store(mut store: LightClientStore, snapshot: LightClientSnapshot, 
     
     return store
 }
-
 
 
 pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
@@ -116,13 +116,21 @@ pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnaps
     let sync_committee_bits: Vec<u8> = _trimmed.as_bytes().to_vec();
     println!("Vec<u8>:{:?}", sync_committee_bits);
 
+
+    // THIS IS THE ROOT, BUT WE NEED THE MERKLE BRANCH CONNECTING IT TO BEACON STATE
+    let _finalized_branch = state["data"]["finalized_checkpoint"]["root"].to_string();
+    let _trimmed = &_finalized_branch.replace("\"", "");
+    let finalized_branch: Vec<u8> = _trimmed.as_bytes().to_vec();
+
+
+
     // get sync committee signature 
     let sync_committee_signature = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_signature"].to_string();
     println!("{}",sync_committee_signature);
     // other update vars from state obj
     let branch = vec![0,1,2,3,4,5]; //PLACEHOLDER
     let finality_header = current_header;
-    let finality_branch =vec![0,1,2,3,4,5];//PLACEHOLDER
+    let finality_branch = finalized_branch;//PLACEHOLDER
     let sync_committee_bits = sync_committee_bits;
     let fork = state["data"]["fork"].to_string();
     let sync_pubkeys = &snapshot.next_sync_committee.pubkeys.to_string();

@@ -49,9 +49,9 @@ impl LightClientStore{
 pub struct LightClientUpdate{
     pub header: BeaconBlockHeader,
     pub next_sync_committee: SyncCommittee,
-    pub next_sync_committee_branch: Vec<i32>,
+    pub next_sync_committee_branch: Vec<u8>,
     pub finality_header: BeaconBlockHeader,
-    pub finality_branch: Vec<i32>,
+    pub finality_branch: Vec<u8>,
     pub sync_committee_bits: Vec<u8>,
     pub sync_committee_signature: String,
     pub fork_version: String,
