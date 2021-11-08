@@ -25,6 +25,13 @@ pub fn get_full_state_object(api_key: &str, node_id: &str, state_id: &str)->serd
     return state
 }
 
+pub fn get_block_body(api_key: &str, node_id: &str, state_id: &str)->serde_json::Value{
+    
+    let endpoint = format!("v2/beacon/blocks/{}",state_id);
+    let blockbody: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
+    
+    return blockbody
+}
 
 
 // pub fn get_block_header(api_key: &str, node_id: &str, state_id: &str)->BeaconBlockHeader{

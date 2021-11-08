@@ -64,7 +64,7 @@ pub fn update_store(snapshot: LightClientSnapshot, update: Option<LightClientUpd
 
 
 
-pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnapshot)->LightClientUpdate{
+pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
 
     // new header from state object
     let _slot = state["data"]["latest_block_header"]["slot"].to_string();
@@ -112,13 +112,23 @@ pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnaps
         next_sync_committee: next_sync_committee,
     };
 
+
+    // get sync_aggregate from beacon block body
+    // parse to vector of u8s
+    let _sync_committee_bits = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_bits"].to_string();
+    let _trimmed = &_sync_committee_bits.replace("\"", "");
+    let sync_committee_bits: Vec<u8> = _trimmed.as_bytes().to_vec();
+    println!("Vec<u8>:{:?}", sync_committee_bits);
+
+    // get sync committee signature 
+    let sync_committee_signature = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_signature"].to_string();
+    println!("{}",sync_committee_signature);
     // other update vars from state obj
     let branch = vec![0,1,2,3,4,5]; //PLACEHOLDER
     let finality_header = current_header;
     let finality_branch =vec![0,1,2,3,4,5];//PLACEHOLDER
-    let sync_committee_bits = vec![0,1,2,3,4,5];//PLACEHOLDER
+    let sync_committee_bits = sync_committee_bits;
     let fork = state["data"]["fork"].to_string();
-    let sync_sig = &snapshot.next_sync_committee.aggregate_pubkey.to_string();
     let sync_pubkeys = &snapshot.next_sync_committee.pubkeys.to_string();
 
     // build update obj
@@ -129,10 +139,26 @@ pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnaps
         finality_header: finality_header,
         finality_branch: finality_branch,
         sync_committee_bits: sync_committee_bits,
-        sync_committee_signature: sync_sig.to_string(),
+        sync_committee_signature: sync_committee_signature,
         fork_version: fork,
     };
 
     return update
 
 }
+
+
+// class BeaconBlockBody(Container){
+    
+//     randao_reveal: BLSSignature
+//     eth1_data: Eth1Data  # Eth1 data vote
+//     graffiti: Bytes32  # Arbitrary data
+//     # Operations
+//     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+//     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+//     attestations: List[Attestation, MAX_ATTESTATIONS]
+//     deposits: List[Deposit, MAX_DEPOSITS]
+//     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+//     sync_aggregate: SyncAggregate
+
+// }

@@ -5,6 +5,11 @@ pub struct SyncCommittee {
     pub aggregate_pubkey: String,
   }
   
+pub struct SyncAggregate{
+    pub sync_committee_bits: Vec<u8>,
+    pub sync_committee_signature: String,
+}
+
 pub struct BeaconBlockHeader{
     pub slot: u32,
     pub proposer_index: u32,
@@ -36,7 +41,9 @@ pub struct LightClientUpdate{
     pub next_sync_committee_branch: Vec<i32>,
     pub finality_header: BeaconBlockHeader,
     pub finality_branch: Vec<i32>,
-    pub sync_committee_bits: Vec<i32>,
+    pub sync_committee_bits: Vec<u8>,
     pub sync_committee_signature: String,
     pub fork_version: String,
 }
+
+
