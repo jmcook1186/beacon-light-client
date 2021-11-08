@@ -38,11 +38,12 @@ pub fn make_snapshot(state: &serde_json::Value)-> LightClientSnapshot{
 
 
 pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
+    // initialize with empty update vec
+    let empty_updates: Vec<LightClientUpdate> = vec![];
 
-    
     let store = LightClientStore{
         snapshot: snapshot,
-        valid_updates: None,
+        valid_updates: empty_updates,
     };
 
 
@@ -50,15 +51,12 @@ pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
 }
 
 
-pub fn update_store(snapshot: LightClientSnapshot, update: Option<LightClientUpdate>)->LightClientStore{
+pub fn update_store(mut store: LightClientStore, snapshot: LightClientSnapshot, update: LightClientUpdate)->LightClientStore{
 
+    // call class method of LightClientStore to add update to vec and refresh snasphot
+    store.add_update(update);
+    store.refresh_snapshot(snapshot);
     
-    let store = LightClientStore{
-        snapshot: snapshot,
-        valid_updates: update,
-    };
-
-
     return store
 }
 
@@ -101,7 +99,6 @@ pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnaps
         body_root: current_body_root.to_string(),
     };
 
-    
     // new sync committees from state object
     let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
 
@@ -111,7 +108,6 @@ pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnaps
         current_sync_committee: current_sync_committee,
         next_sync_committee: next_sync_committee,
     };
-
 
     // get sync_aggregate from beacon block body
     // parse to vector of u8s

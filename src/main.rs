@@ -20,7 +20,7 @@ fn main(){
     let store = initialize(&api_key, &node_id);
     let new_store = update(store, &api_key, &node_id);
 
-    println!("{}", new_store.valid_updates.unwrap().header.body_root.to_string())
+    println!("new_store header body root:\n{}\n", new_store.valid_updates[0].header.body_root.to_string())
 
 }
 
@@ -37,7 +37,6 @@ pub fn initialize(api_key: &str, node_id: &str)->LightClientStore{
     return store
 }
 
-
 pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->LightClientStore{
     // update takes the initial store object and fills the valid_updates field
     // by querying the head of the chain. We can keep calling update() to 
@@ -49,7 +48,7 @@ pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->Li
     let new_snapshot = build_objects::make_snapshot(&new_state);
     let update = build_objects::get_update(&new_state, &new_snapshot, &beacon_block_body);
     
-    let new_store = build_objects::update_store(new_snapshot, Some(update));
+    let new_store = build_objects::update_store(current_store, new_snapshot, update);
 
     return new_store
 }

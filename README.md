@@ -16,7 +16,7 @@ Then cargo run in the light-client directory
 
 ## Current Functionality
 
-The light client randomly selects a beacon node to connect to. It then requests a `beacon_state` object from the most recenbt finalized block and parses it into a snapshot object. This snapshot object becomes the initial trusted state the lioght cleint syncs to. Right now, the light client will just print the snapshot's aggregate signature and state root (both hex-encoded strings) to demonstrate successful retrieval of the snapshot.
+The light client randomly selects a beacon node to connect to. The server then creates an initial store object by parsing data from the `beacon_block_body` and `beacon_state` objects associated with the most recent finalized block requested from the Beacon Node. Then, the same process is then repeated for the head of the chain, with new data used to update `store`.
 
 
 ## Dev Notes

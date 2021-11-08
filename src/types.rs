@@ -29,10 +29,21 @@ pub struct LightClientSnapshot{
 pub struct LightClientStore{
 
     pub snapshot: LightClientSnapshot,
-    pub valid_updates: Option <LightClientUpdate>,
+    pub valid_updates: Vec<LightClientUpdate>,
 
 }
-
+impl LightClientStore{
+    pub fn add_update(&mut self, update: LightClientUpdate) ->bool{
+        self.valid_updates.push(update);
+        true
+    }
+}
+impl LightClientStore{
+    pub fn refresh_snapshot(&mut self, snapshot: LightClientSnapshot) ->bool{
+        self.snapshot = snapshot;
+        true
+    }
+}
 
 
 pub struct LightClientUpdate{
