@@ -25,7 +25,32 @@ For light-client dev make sure the testnet BN's are running altair. The defaults
 
 ## finality_branch and sync_committee_branch
 
-I have not yet worked out precisely how to derive these values. These fields in the LightCleintUpdate object refer to the Merkle branches that connect the finalized root and the sync_committee object respectively to the beacon state root. 
+I have not yet worked out precisely how to derive these values. These fields in the LightClientUpdate object refer to the Merkle branches that connect the finalized root and the sync_committee object respectively to the beacon state root. 
+
+### current knowledge:
+
+- what is FINALIZED_ROOT_INDEX? This is a generalized index that locates the position of the finalized root (beaconState.finalized_checkpoint.root) in the merkle-tree representation of the beaconState object.
+- what is the finality_branch? This is the set of indices, cast as a Vec<u8>, representing each node in the Merklized beaconState object required to generate a proof that the finalized root was used to generate the beacon state root. This is like a path through the tree encoded as integers.
+- A "path" through the merkle-tree, e.g. a json traverse through the state object to the finalized root would be:
+    
+    `state["data"]["finalized_checkpoint"]["root"]`
+    which can be expressed as a path:
+    `["data", "finalized_checkpoint", "root"]`
+
+    This is then converted to a generalized index. A generalized index is an integer that represents a node in a binary merkle tree where each node has a generalized index `2 ** depth + index in row`. 
+
+    ```
+          1           --depth = 0  2**0 + 1 = 1
+      2       3       --depth = 1  2**1 + 0 = 2, 2**1+1 = 3
+    4   5   6   7     --depth = 2  2**2 + 0 = 4, 2**2 + 1 = 5, 2**2 + 2 = 6, 2**2 + 3 = 7
+    
+    ```
+    
+    This representation yields a node index for each piece of data in the merkle tree. We need to find the indices for the beacon state root and a) the sync_commitee object, and b) the finalized root in the merklized beacon state object. This is all that is needed for the update object. Downstream, these indices will be used for verification by identifying the hash partners of each node in the branch between the sync_committee/finalized root and the state root. Then, sequentially hashing each node with its partner should yield a hash equal to the state root.
+
+Questions: how does a json object map to a generalized index?
+ - the beaconState seems to be pretty much flat - ie. there is no nesting of fields
+
 
 In Lodestar: 
 

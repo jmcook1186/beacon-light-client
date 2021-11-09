@@ -22,6 +22,9 @@ fn main(){
 
     println!("new_store header body root:\n{}\n", new_store.valid_updates[0].header.body_root.to_string())
 
+    let out = query_node::get_state_as_ssz_bytes(&api_key, &node_id, &"finalized".to_string());
+
+    
 }
 
 
