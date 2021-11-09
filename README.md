@@ -23,3 +23,15 @@ The light client randomly selects a beacon node to connect to. The server then c
 
 For light-client dev make sure the testnet BN's are running altair. The defaults in vars.env set the altair hard fork to block 18million-ish. Set it to 0, then the altair endpoints will be available immediately.
 
+## finality_branch and sync_committee_branch
+
+I have not yet worked out precisely how to derive these values. These fields in the LightCleintUpdate object refer to the Merkle branches that connect the finalized root and the sync_committee object respectively to the beacon state root. 
+
+In Lodestar: 
+
+    finalityBranch =   syncAttestedState.tree.getSingleProof(BigInt(FINALIZED_ROOT_INDEX))
+
+    packages/params/test/unit/constants.test.ts
+    const FINALIZED_ROOT_INDEX = Number(ssz.altair.BeaconState.getPathGindex(["finalizedCheckpoint", "root"]));
+
+Immediate objectives are to determine the type and source of the input data and the functions that transform them into the desired branch values. Then, explore the available Rust crates that could help achieve it - if none available try to write funcs in get_branches.rs that do the necessary calculations.

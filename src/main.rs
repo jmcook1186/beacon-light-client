@@ -34,8 +34,10 @@ pub fn initialize(api_key: &str, node_id: &str)->LightClientStore{
     let current_snapshot = build_objects::make_snapshot(&current_state);
     let store = build_objects::initialize_store(current_snapshot);
 
+    println!("update length: {}", store.valid_updates.len().to_string());
     return store
 }
+
 
 pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->LightClientStore{
     // update takes the initial store object and fills the valid_updates field
@@ -49,6 +51,7 @@ pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->Li
     let update = build_objects::get_update(&new_state, &new_snapshot, &beacon_block_body);
     
     let new_store = build_objects::update_store(current_store, new_snapshot, update);
+    println!("update length: {}", new_store.valid_updates.len().to_string());
 
     return new_store
 }
