@@ -46,66 +46,75 @@ This takes each element in the object and returns a bytestring. Each value in th
 
 serialized would have the following structure (only padded to 4 bits here, padded to 32 bits in reality):
 
-
+```
 [37, 0, 0, 0, 55, 0, 0, 0, 16, 0, 0, 0, 22, 0, 0, 0, 1, 2, 3, 4]
   ----------   ----------   ----------  -----------  ----------
       |             |            |           |            |
    number1       number2    offset for    number 3    value for 
                               vector                   vector
 
+```
 
 divided over lines for clarity:
 
+```
 [
   37, 0, 0, 0,  # little-endian encoding of `number1`.
-  55, 0, 0, 0,  # little-endian encoding of `number2`.
+  55, 0, 0, 0,  # little-endian encoding of `number2`.  
   16, 0, 0, 0,  # The "offset" that indicates where the value of `vector` starts (little-endian 16).
   22, 0, 0, 0,  # little-endian encoding of `number3`.
   1, 2, 3, 4,   # The actual value of the `bytes` field.          
 ]
-
+```
 This is still a simplification - the integers and zeros in the schematics above would actually be stored as 8bit binary objects, like this:
 
+```
 [
   10100101000000000000000000000000  # little-endian encoding of `number1`
-  10110111000000000000000000000000  # little-endian encoding of `number2`.
-  10010000000000000000000000000000  # The "offset" that indicates where the value of `vector` starts (little-endian 16).
+  10110111000000000000000000000000  # little-endian encoding of `number2`. 
+  10010000000000000000000000000000  # The "offset" that indicates where the value of `vector` starts (little-endian 16). 
   10010110000000000000000000000000  # little-endian encoding of `number3`.
   10000001100000101000001110000100   # The actual value of the `bytes` field.          
 ]
+```
 
 So the actual values for variable-length types are stored in a heap at the end of the serialized object with their offsets stored in their correct positions in the ordered list of fields.
 
-
-
+<br>
+<br>
 ![Merkleization schematic](/Assets/eth2-ssz.png)
 <i>SSZ schematic from Protolambda github: https://github.com/protolambda/eth2-docs#ssz-encoding </i>
-
+<br>
+<br>
 
 ## Merkleization
 
 This serialized object can then be merkleized - that is transformed into a Merkle-tree representation of the same data. First, the number of 32 bit chunks in the serialized object is determined. These are the "leaves" of the tree. With 8 leaves there will be 3 levels to the tree (i.e. its depth is 3). This is because each element is hashed with one partner in each level, causing the number of elements to halve each time./ Three halvings of eight equals one, and this one is the root hash. In our exampel above, the first leaf will be the value of `number1` padded to 32 bits:
 
 [37, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] = leaf 1
+<br>
 [55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] = leaf 2
 
 These leaves sit at the lowest level of the tree - level 3 in this case - and they are hashed together to form a node in level 2. In the diagram below leaf1 and leaf2 hash to form node 1. Leaf3 and leaf4 hash to form node2. Node1 and node2 hash to form the root. If there are an odd number of leaves, the last leaf is hashed with 32 zeros.
-
-
+<br>
+<br>
+```
       __root__
      /        \
     node1      node2
    /   \     /    \
 leaf1 leaf2 leaf3  leaf4
-
-
+```
+<br>
+<br>
 Instead of referring to these tree lements as leaf X, node X etc, we can give them generalized indices, starting with root = 1 and counting from left to right along each level. This is the generalized index explained above. Each element in the serialized list has a generalized index equal to `2**depth + idx` where idx is its zero-indexed position in the serialized object and the depth is the number of levels in the Merkle tree, which can be determined as the square root of the number of elements (leaves). 
 
 
 
 ![Merkleization schematic](/Assets/eth2-htr.png)
 <i>Merkleization schematic from Protolambda github: https://github.com/protolambda/eth2-docs#ssz-hash-tree-root-and-merkleization</i>
-
+<br>
+<br>
 ## Multiproofs
 
 Providing the list of generalized indices representing a specific element allows us to verify it against the hash-tree-root. This root is our accepted version of reality. Any data we are provided can be verified against that reality by inserting it into the right place in the Merkle tree (determined by its generalized index) and observing that the root remains constant. There are functions in the spec [here](https://github.com/ethereum/consensus-specs/blob/dev/ssz/merkle-proofs.md#merkle-multiproofs) that show how to compute the minimal set of nodes required to verify the contents of a particular set of generalized indices.
@@ -126,6 +135,8 @@ The hash of (8,9) should equal hash (4), which hashes with 5 to produce 2, which
 
 For the light client server, we do not need to conduct any actual proofs, but we do need to serialize the `state` object and determine the generalized indices for the `next_sync_committee` and `finalized_root` fields. [ssz_rs](https://github.com/ralexstokes/ssz_rs) has almost all the required functionality, but probably requires some extending to cope with nested structs.
 
+<br>
+<br>
 
 ## The beacon_state object
 
@@ -177,16 +188,21 @@ state_roots                       |   vec<String>   |     ??
 validators                        |   vec<u64>      |     fixed
 
 ```
-
+<br>
+<br>
 
 ## Outstanding Questions:
 
 <b>QUESTION</b> How does the deserialization then know where the end of each fixed-size value is in the "heap" at the end?
+<br>
 <b>QUESTION</b> How does the deserialization know which elements are values and which are offsets?
+<br>
 <b>QUESTION</b> What happens to the field names?
+<br>
 <b>QUESTION</b> Should the generalized indices in the light client object just be the specific indices for the data, or the full "path" through the
 hash-tree? i.e. for gen_idx = 10 in the following tree
-
+<br>
+<br>
 ```
                     1 
           2                     3                  

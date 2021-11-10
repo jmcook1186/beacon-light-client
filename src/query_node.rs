@@ -22,9 +22,6 @@ pub fn get_full_state_object(api_key: &str, node_id: &str, state_id: &str)->serd
     let endpoint = format!("v2/debug/beacon/states/{}",state_id);
     let state: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
 
-    for (key, value) in state["data"].as_object().unwrap(){
-      println!("{}", key);
-    }
 
     return state
 }
