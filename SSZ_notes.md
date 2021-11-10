@@ -1,5 +1,7 @@
+# SSZ Serialization, generalized indiced and multiproofs
+This page contains a conceptual outline for these concepts as they relate to the development of the Rust light client.
 
-## generalized indices
+## Generalized indices
 
 A generalized index is an integer that represents a node in a binary merkle tree where each node has a generalized index `2 ** depth + index in row`. 
 
