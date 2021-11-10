@@ -82,7 +82,9 @@ So the actual values for variable-length types are stored in a heap at the end o
 
 <br>
 <br>
+
 ![Merkleization schematic](/Assets/eth2-ssz.png)
+
 <i>SSZ schematic from Protolambda github: https://github.com/protolambda/eth2-docs#ssz-encoding </i>
 <br>
 <br>
@@ -109,10 +111,12 @@ leaf1 leaf2 leaf3  leaf4
 <br>
 Instead of referring to these tree lements as leaf X, node X etc, we can give them generalized indices, starting with root = 1 and counting from left to right along each level. This is the generalized index explained above. Each element in the serialized list has a generalized index equal to `2**depth + idx` where idx is its zero-indexed position in the serialized object and the depth is the number of levels in the Merkle tree, which can be determined as the square root of the number of elements (leaves). 
 
-
+<br>
+<br>
 
 ![Merkleization schematic](/Assets/eth2-htr.png)
 <i>Merkleization schematic from Protolambda github: https://github.com/protolambda/eth2-docs#ssz-hash-tree-root-and-merkleization</i>
+
 <br>
 <br>
 ## Multiproofs
