@@ -21,7 +21,11 @@ pub fn get_full_state_object(api_key: &str, node_id: &str, state_id: &str)->serd
     
     let endpoint = format!("v2/debug/beacon/states/{}",state_id);
     let state: serde_json::Value = http_requests::generic_request(&api_key, &endpoint, &node_id).unwrap();
-    
+
+    for (key, value) in state["data"].as_object().unwrap(){
+      println!("{}", key);
+    }
+
     return state
 }
 
@@ -33,24 +37,25 @@ pub fn get_block_body(api_key: &str, node_id: &str, state_id: &str)->serde_json:
     return blockbody
 }
 
-#[tokio::main]
-pub async fn get_state_as_ssz_bytes(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
+// #[tokio::main]
+// pub async fn get_state_as_ssz_bytes(api_key: &str, node_id: &str, state_id: &str)->Vec<u8>{
 
-    let endpoint = format!("lighthouse/beacon/states/{}/ssz",state_id);
 
-    let prefix: String = format!("http://localhost:{}/eth/",node_id);
-    let url: String = prefix+&endpoint;
-    let client = reqwest::Client::new();
-    let _headers: HeaderMap = get_request_auth_header(api_key).unwrap();
+//     let endpoint = format!("lighthouse/beacon/states/{}/ssz",state_id);
+
+//     let prefix: String = format!("http://localhost:{}/eth/",node_id);
+//     let url: String = prefix+&endpoint;
+//     let client = reqwest::Client::new();
+//     let _headers: HeaderMap = get_request_auth_header(api_key).unwrap();
   
-    let response = 
-      client.get(&url).headers(_headers).send().await;
+//     let response = 
+//       client.get(&url).headers(_headers).send().await;
       
-    let out = response.map(|bytes| BeaconState::from_ssz_bytes(&bytes, spec).map_err(Error::InvalidSsz))
-      .transpose();
+//     let out = response.map(|bytes| BeaconState::from_ssz_bytes(&bytes, spec).map_err(Error::InvalidSsz))
+//       .transpose();
 
-    return out
-}
+//     return out
+// }
 
 // pub fn get_block_header(api_key: &str, node_id: &str, state_id: &str)->BeaconBlockHeader{
 
