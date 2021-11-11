@@ -12,7 +12,7 @@ pub struct SyncAggregate{
     pub sync_committee_signature: String,
 }
 
-
+#[derive(Clone)]
 pub struct BeaconBlockHeader{
     pub slot: u64,
     pub proposer_index: u64,

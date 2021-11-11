@@ -4,18 +4,18 @@ use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee, LightCl
 Fork, Eth1Data, Validator, Checkpoint, BeaconState};
 
 
-// pub fn get_sync_committees(state: &serde_json::Value)->(SyncCommittee, SyncCommittee){
+pub fn get_sync_committees(state: &BeaconState)->(SyncCommittee, SyncCommittee){
+    //let string2: String = String::from_utf8(src2.clone()).unwrap();
+    let current_sync_committee_pubkeys = &state.current_sync_committee.pubkeys;
+    let current_aggregate_pubkey = &state.current_sync_committee.aggregate_pubkey;
+    let next_sync_committee_pubkeys = &state.next_sync_committee.pubkeys;
+    let next_aggregate_pubkey = &state.next_sync_committee.aggregate_pubkey;
 
-//     let current_sync_committee_pubkeys = state["data"]["current_sync_committee"]["pubkeys"].to_string();
-//     let current_aggregate_pubkey = state["data"]["current_sync_committee"]["aggregate_pubkey"].to_string();
-//     let next_sync_committee_pubkeys = state["data"]["next_sync_committee"]["pubkeys"].to_string();
-//     let next_aggregate_pubkey = state["data"]["aggregate_pubkey"].to_string();
+    let current_sync_committee = SyncCommittee{pubkeys: current_sync_committee_pubkeys.to_vec(), aggregate_pubkey: current_aggregate_pubkey.to_vec()};
+    let next_sync_committee = SyncCommittee{pubkeys: next_sync_committee_pubkeys.to_vec(), aggregate_pubkey: next_aggregate_pubkey.to_vec()};
 
-//     let current_sync_committee = SyncCommittee{pubkeys: current_sync_committee_pubkeys, aggregate_pubkey: current_aggregate_pubkey};
-//     let next_sync_committee = SyncCommittee{pubkeys: next_sync_committee_pubkeys, aggregate_pubkey: next_aggregate_pubkey};
-
-//     return (current_sync_committee, next_sync_committee)
-// }
+    return (current_sync_committee, next_sync_committee)
+}
 
 
 pub fn get_full_state_object(api_key: &str, node_id: &str, state_id: &str)->(serde_json::Value, BeaconState){
@@ -175,7 +175,7 @@ pub fn get_full_state_object(api_key: &str, node_id: &str, state_id: &str)->(ser
         }
     }
 
-    for i in 0..blockhash_vec.len()-1{
+    for i in 0..blockhash_vec.len(){
 
         let b = Eth1Data{
             deposit_root: deproot_vec[i].to_vec(),

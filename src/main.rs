@@ -34,12 +34,14 @@ pub fn initialize(api_key: &str, node_id: &str){
     // initialize() builds a snapshot and store object for the most recent finalized chackpoint
     // the initial store object has no updates in the valid_updates field. This is
     // populated by update()
-    let state_id = "head".to_string();
+    let state_id = "finalized".to_string();
     let (current_state_json, current_state) = query_node::get_full_state_object(&api_key, &node_id, &state_id);
-    // let current_snapshot = build_objects::make_snapshot(&current_state);
-    // let store = build_objects::initialize_store(current_snapshot);
+    let current_snapshot = build_objects::make_snapshot(&current_state);
+    //let store = build_objects::initialize_store(current_snapshot);
 
-    //return store
+    println!("{:?}",&current_snapshot.current_sync_committee.aggregate_pubkey);
+
+    
 }
 
 
@@ -49,12 +51,12 @@ pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str){
     // refresh new_store with up to date information.
 
     let state_id = "head".to_string();
-    let new_state = query_node::get_full_state_object(&api_key, &node_id, &state_id);
-    // let beacon_block_body = query_node::get_block_body(&api_key, &node_id, &state_id);
-    // let new_snapshot = build_objects::make_snapshot(&new_state);
-    // let update = build_objects::get_update(&new_state, &new_snapshot, &beacon_block_body);
+    let (new_state_json, new_state) = query_node::get_full_state_object(&api_key, &node_id, &state_id);
+    let beacon_block_body = query_node::get_block_body(&api_key, &node_id, &state_id);
+    let new_snapshot = build_objects::make_snapshot(&new_state);
+    //let update = build_objects::get_update(&new_state, &new_snapshot, &beacon_block_body);
     
-    // let new_store = build_objects::update_store(current_store, new_snapshot, update);
+    //let new_store = build_objects::update_store(current_store, new_snapshot, update);
 
     //return new_store
 }

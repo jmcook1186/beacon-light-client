@@ -1,37 +1,38 @@
 use std::format;
 use crate::http_requests;
 use crate::query_node;
-use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee, LightClientStore, LightClientUpdate};
+use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee, 
+    LightClientStore, LightClientUpdate, BeaconState};
 
 
-// pub fn make_snapshot(state: &serde_json::Value)-> LightClientSnapshot{
+pub fn make_snapshot(state: &BeaconState)-> LightClientSnapshot{
 
-//     let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
+    let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
 
-//     let snapshot = LightClientSnapshot{
-//         header: state.latest_block_header,
-//         current_sync_committee: current_sync_committee,
-//         next_sync_committee: next_sync_committee,
-//     };
-
-
-//     return snapshot
-// }
+    let snapshot = LightClientSnapshot{
+        header: state.latest_block_header.to_owned(),
+        current_sync_committee: current_sync_committee,
+        next_sync_committee: next_sync_committee,
+    };
 
 
-// pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
+    return snapshot
+}
+
+
+pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
     
-//     // initialize with empty update vec
-//     let empty_updates: Vec<LightClientUpdate> = vec![];
+    // initialize with empty update vec
+    let empty_updates: Vec<LightClientUpdate> = vec![];
 
-//     let store = LightClientStore{
-//         snapshot: snapshot,
-//         valid_updates: empty_updates,
-//     };
+    let store = LightClientStore{
+        snapshot: snapshot,
+        valid_updates: empty_updates,
+    };
 
 
-//     return store
-// }
+    return store
+}
 
 
 // pub fn update_store(mut store: LightClientStore, snapshot: LightClientSnapshot, update: LightClientUpdate)->LightClientStore{
