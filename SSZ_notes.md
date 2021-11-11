@@ -141,6 +141,9 @@ The hash of (8,9) should equal hash (4), which hashes with 5 to produce 2, which
 
 For the light client server, we do not need to conduct any actual proofs, but we do need to serialize the `state` object and determine the generalized indices for the `next_sync_committee` and `finalized_root` fields, so that the multiproofs can be achieved by the light client after receiving the update object from the light server. [ssz_rs](https://github.com/ralexstokes/ssz_rs) appears to have the required functionality to SSZ serialize the `state` object. Below I have listed each of the keys in the `state` object and their types.
 
+Strings will need to be converted to vec<u8>. bitvectors can be vectors of Bools, 
+
+
 <br>
 <br>
 
@@ -150,48 +153,53 @@ The state obect to be serialized has the following fields. This information is u
 
 ```
 
-key                               |    type         |   fixed/var size   
--------------------------------------------------------------------------
-balances                          |   vec<u64>      |     fixed         
-block_roots                       |   vec<String>   |     variable     
-current_epoch_participation       |   vec<u8>       |     fixed        
-current_justified_checkpoint      |   Checkpoint    |     fixed        
-    epoch                         |   u32           |     fixed           
-    root                          |   String        |     fixed         
-current_sync_committee            |   SyncCommittee |     fixed               
-    pubkeys                       |   String        |     fixed          
-    aggregate_pubkey              |   String        |     fixed         
-eth1_data                         |   Eth1Data      |     fixed         
-    deposit_root                  |   String        |     fixed         
-    deposit_count                 |   u64           |     fixed         
-    block_hash                    |   32bit hash    |     fixed        
-eth1_data_votes                   |   Container?    |     ??            
-eth1_deposit_index                |   u64           |     fixed         
-finalized_checkpoint              |   Checkpoint    |     fixed          
-    epoch                         |   u64           |     fixed
-    root                          |   String        |     fixed
-fork                              |   Fork          |     fixed           
-    current_version               |   String        |     fixed
-    epoch                         |   u64           |     fixed
-    previous_version              |   String        |     fixed
-genesis_time                      |   u64           |     fixed
-genesis_validators_root           |   String        |     fixed
-historical_roots                  |   vec<String>   |     ??
-inactivity_scores                 |   vec<u64>      |     fixed
-justification_bits                |   vec<u8>       |     fixed
-latest_block_header               |   BlockHeader   |     fixed
-next_sync_committee               |   SyncCommittee |     fixed
-    pubkeys                       |   String        |     fixed          
-    aggregate_pubkey              |   String        |     fixed 
-previous_epoch_participation      |   vec<u8>       |     fixed
-previous_justified_checkpoint     |   Checkpoint    |     fixed         
-    epoch                         |   u64           |     fixed
-    root                          |   String        |     fixed
-randao_mixes                      |   vec<u32>      |     fixed     
-slashings                         |   vec<u64>      |     ??
-slot                              |   u64           |     fixed
-state_roots                       |   vec<String>   |     ??
-validators                        |   vec<u64>      |     fixed
+key                               |    type         |   fixed/var size   | leaf no
+-------------------------------------------------------------------------------------
+balances                          |   vec<u64>      |     fixed          |  0
+block_roots                       |   vec<vec<u8>>  |     variable       |  1
+current_epoch_participation       |   vec<u8>       |     fixed          |  2
+current_justified_checkpoint      |   Checkpoint    |     fixed          |  
+    epoch                         |   u32           |     fixed          |  3
+    root                          |   vec<u8>       |     fixed          |  4
+current_sync_committee            |   SyncCommittee |     fixed          |     
+    pubkeys                       |   vec<u8>       |     fixed          |  5
+    aggregate_pubkey              |   vec<u8>       |     fixed          |  6
+eth1_data                         |   Eth1Data      |     fixed          |
+    deposit_root                  |   vec<u8>       |     fixed          |  7
+    deposit_count                 |   u64           |     fixed          |  8
+    block_hash                    |   vec<u32>      |     fixed          |  9
+eth1_data_votes                 |vec<u8,u64,vec<u32>>|     ??            |  10    (this is a list of Eth1Data objs)
+eth1_deposit_index                |   u64           |     fixed          |  11
+finalized_checkpoint              |   Checkpoint    |     fixed          |  
+    epoch                         |   u64           |     fixed          |  12
+    root                          |   vec<u8>       |     fixed          |  13
+fork                              |   Fork          |     fixed          |
+    current_version               |   vec<u8>       |     fixed          |  14
+    epoch                         |   u64           |     fixed          |  15
+    previous_version              |   vec<u8>       |     fixed          |  16
+genesis_time                      |   u64           |     fixed          |  17
+genesis_validators_root           |   vec<u8>       |     fixed          |  18
+historical_roots                  |   vec<vec<u8>>  |     ??             |  19
+inactivity_scores                 |   vec<u64>      |     fixed          |  20
+justification_bits                |   vec<u8>       |     fixed          |  21
+latest_block_header               |   BlockHeader   |     fixed          |  
+   Slot                           |   u64           |     fixed          |  22
+   proposer_index                 |   u64           |     fixed          |  23
+   parent_root                    |   vec<u8>       |     fixed          |  24
+   state_root                     |   vec<u8>       |     fixed          |  25
+   body_root                      |   vec<u8>       |     fixed          |  26
+next_sync_committee               |   SyncCommittee |     fixed          |  
+    pubkeys                       |   String        |     fixed          |  27
+    aggregate_pubkey              |   String        |     fixed          |  28
+previous_epoch_participation      |   vec<u8>       |     fixed          |  29
+previous_justified_checkpoint     |   Checkpoint    |     fixed          |  
+    epoch                         |   u64           |     fixed          |  30
+    root                          |   String        |     fixed          |  31
+randao_mixes                      |   vec<u32>      |     fixed          |  32
+slashings                         |   vec<u64>      |     ??             |  33
+slot                              |   u64           |     fixed          |  34
+state_roots                       |   vec<String>   |     ??             |  35
+validators                        |   vec<u64>      |     fixed          |  36
 
 ```
 <br>
@@ -208,8 +216,9 @@ validators                        |   vec<u64>      |     fixed
 <b>QUESTION</b> Should the generalized indices in the light client object just be the specific indices for the data, or the full "path" through the
 hash-tree? i.e. for gen_idx = 10 in the following tree (presumably just [10], as the path can be recomputed pretty easily).
 <br>
-<b>QUESTION</b> do the `historical_roots` and `eth1data_votes` have variable sizes? Is there a certain number of historical elements to include? Is this a design decision for the light client/server?
+<b>QUESTION</b> do the `historical_roots`, `slashings`, `state_roots` and `eth1data_votes` have variable sizes? Is there a certain number of historical elements to include? Is this a design decision for the light client/server? 
 <br>
+<b>QUESTION</b> Am I thinking about the leaf numbers right in the table above? i.e. skipping outer containers and only considering the actual data inside.
 
 
 ```
