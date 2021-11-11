@@ -18,12 +18,13 @@ fn main(){
     let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope"); 
 
     let store = initialize(&api_key, &node_id);
+
+    // TODO:
+    // update() currently executes indiscriminately
+    // need to make this optional - is an update necessary? If not don't execute!!
     let new_store = update(store, &api_key, &node_id);
 
-    println!("new_store header body root:\n{}\n", new_store.valid_updates[0].header.body_root.to_string())
-
-    //let out = query_node::get_state_as_ssz_bytes(&api_key, &node_id, &"finalized".to_string());
-
+    println!("new_store header body root:\n{}\n", new_store.valid_updates[0].header.body_root.to_string());
     
 }
 
@@ -45,7 +46,7 @@ pub fn initialize(api_key: &str, node_id: &str)->LightClientStore{
 pub fn update(current_store: LightClientStore, api_key: &str, node_id: &str)->LightClientStore{
     // update takes the initial store object and fills the valid_updates field
     // by querying the head of the chain. We can keep calling update() to 
-    // refresh new_store with up to dat information.
+    // refresh new_store with up to date information.
 
     let state_id = "head".to_string();
     let new_state = query_node::get_full_state_object(&api_key, &node_id, &state_id);

@@ -139,7 +139,7 @@ The hash of (8,9) should equal hash (4), which hashes with 5 to produce 2, which
 
 ## Implementation in Rust light-client
 
-For the light client server, we do not need to conduct any actual proofs, but we do need to serialize the `state` object and determine the generalized indices for the `next_sync_committee` and `finalized_root` fields. [ssz_rs](https://github.com/ralexstokes/ssz_rs) has almost all the required functionality, but probably requires some extending to cope with nested structs.
+For the light client server, we do not need to conduct any actual proofs, but we do need to serialize the `state` object and determine the generalized indices for the `next_sync_committee` and `finalized_root` fields, so that the multiproofs can be achieved by the light client after receiving the update object from the light server. [ssz_rs](https://github.com/ralexstokes/ssz_rs) appears to have the required functionality to SSZ serialize the `state` object. Below I have listed each of the keys in the `state` object and their types.
 
 <br>
 <br>
@@ -206,9 +206,12 @@ validators                        |   vec<u64>      |     fixed
 <b>QUESTION</b> What happens to the field names?
 <br>
 <b>QUESTION</b> Should the generalized indices in the light client object just be the specific indices for the data, or the full "path" through the
-hash-tree? i.e. for gen_idx = 10 in the following tree
+hash-tree? i.e. for gen_idx = 10 in the following tree (presumably just [10], as the path can be recomputed pretty easily).
 <br>
+<b>QUESTION</b> do the `historical_roots` and `eth1data_votes` have variable sizes? Is there a certain number of historical elements to include? Is this a design decision for the light client/server?
 <br>
+
+
 ```
                     1 
           2                     3                  
