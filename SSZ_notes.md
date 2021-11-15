@@ -80,7 +80,28 @@ This is still a simplification - the integers and zeros in the schematics above 
 ]
 ```
 
-So the actual values for variable-length types are stored in a heap at the end of the serialized object with their offsets stored in their correct positions in the ordered list of fields. To deserialize this object requires the <b>schema</b>. The schema defines the precise layout of the serialized data so that each specific element can be deserialized from a blob of bytes into some meaningful object with the elements having the right type, value, size and position. It is the schema that tells the deserializer which values are actual values and which ones are offsets. All field names disappear when an object is serialized, but reinstantiated on deserialization according to the schema.
+So the actual values for variable-length types are stored in a heap at the end of the serialized object with their offsets stored in their correct positions in the ordered list of fields. To deserialize this object requires the <b>schema</b>. The schema defines the precise layout of the serialized data so that each specific element can be deserialized from a blob of bytes into some meaningful object with the elements having the right type, value, size and position. It is the schema that tells the deserializer which values are actual values and which ones are offsets. All field names disappear when an object is serialized, but reinstantiated on deserialization according to the schema. 
+
+It may also be unclear how the deserialization knows what is data and what is padding for a variable length type such as a vector or list. For these data types an additional "01" bit added after the last value. This 01 bit signifies the end of the data and beginning of the padding.
+
+e.g. a 16-element vector of uint8's would serialize to look something like:
+
+```
+                           32 bytes in total
+                          (not indcluding 0x)
+                                  |
+------------------------------------------------------------------
+0x76e996cb952c162f94e5bb10ea57126e01000000000000000000000000000000
+--|-------------------------------|-|-----------------------------
+|                 |                |                 |
+signifies        data         01 length bit         padding
+hex encoding
+
+```
+
+Note that this is 64 elements long. This is because it is hex-encoded. In hex, each 8 bits of data is represented by 2 characters. Therefore, 64 hex characters = 32 elements each representing 8 bits = 32 bytes.
+
+NB See [ssz.dev](https://www.ssz.dev/overview) for an interactive explainer on this.
 
 ## SSZ Types
 
@@ -106,6 +127,8 @@ SPECIAL    | Bitvector[N]       | Vector of Bools,length N             | empty
            |                    |                                      |
            
 ```
+
+
 
 <br>
 <br>
@@ -145,6 +168,7 @@ This serialized object can then be merkleized - that is transformed into a Merkl
 ```
 
 
+Importantly, the values hashed together in the Merkle tree respresentation of the object ARE the serialized representations of the data - they are serialized into 32 byte chunks specifically to enable hashing and Merkleization.
 
 Instead of referring to these tree elements as leaf X, node X etc, we can give them generalized indices, starting with root = 1 and counting from left to right along each level. This is the generalized index explained above. Each element in the serialized list has a generalized index equal to `2**depth + idx` where idx is its zero-indexed position in the serialized object and the depth is the number of levels in the Merkle tree, which can be determined as the square root of the number of elements (leaves). 
 
@@ -176,8 +200,6 @@ The hash of (8,9) should equal hash (4), which hashes with 5 to produce 2, which
 
 For the light client server, we do not need to conduct any actual proofs, but we do need to serialize the `state` object and determine the generalized indices for the `next_sync_committee` and `finalized_root` fields, so that the multiproofs can be achieved by the light client after receiving the update object from the light server. [ssz_rs](https://github.com/ralexstokes/ssz_rs) appears to have the required functionality to SSZ serialize the `state` object. Below I have listed each of the keys in the `state` object and their types.
 
-Strings will need to be converted to vec<u8>. bitvectors can be vectors of Bools, 
-
 
 <br>
 <br>
@@ -188,7 +210,7 @@ The state obect to be serialized has the following fields. This information is u
 
 ```
 
-key                               |    type         |   fixed/var size   | leaf no
+key                               |    type         |   fixed/var size   | 
 -------------------------------------------------------------------------------------
 balances                          |   vec<u64>      |     fixed          |  0
 block_roots                       |   vec<vec<u8>>  |     variable       |  1
@@ -243,17 +265,4 @@ validators                        |   vec<u64>      |     fixed          |  36
 ## Outstanding Questions:
 
 
-<b>QUESTION</b> do the `historical_roots`, `slashings`, `state_roots` and `eth1data_votes` have variable sizes? Is there a certain number of historical elements to include? Is this a design decision for the light client/server? 
-<br>
-<b>QUESTION</b> Am I thinking about the leaf numbers right in the table above? i.e. skipping outer containers and only considering the actual data inside.
-
-
-```
-                    1 
-          2                     3                  
-    4           5          6          7               
-8      9    10    11   12    13    14    15   
-        
-```
-
-does the update object require [10] or [1, 2, 5, 10]?
+<b>QUESTION</b>: Where is the max length of `historical roots` defined? How does the schema determine what is data and what is padding in the serialized objects?
