@@ -6,7 +6,7 @@ This page contains a conceptual outline for these concepts as they relate to the
 A generalized index is an integer that represents a node in a binary merkle tree where each node has a generalized index `2 ** depth + index in row`. 
 
 ```
-        1           --depth = 0  2**0 + 1 = 1
+        1           --depth = 0  2**0 + 0 = 1
     2       3       --depth = 1  2**1 + 0 = 2, 2**1+1 = 3
   4   5   6   7     --depth = 2  2**2 + 0 = 4, 2**2 + 1 = 5, 2**2 + 2 = 6, 2**2 + 3 = 7
 
@@ -80,7 +80,32 @@ This is still a simplification - the integers and zeros in the schematics above 
 ]
 ```
 
-So the actual values for variable-length types are stored in a heap at the end of the serialized object with their offsets stored in their correct positions in the ordered list of fields.
+So the actual values for variable-length types are stored in a heap at the end of the serialized object with their offsets stored in their correct positions in the ordered list of fields. To deserialize this object requires the <b>schema</b>. The schema defines the precise layout of the serialized data so that each specific element can be deserialized from a blob of bytes into some meaningful object with the elements having the right type, value, size and position. It is the schema that tells the deserializer which values are actual values and which ones are offsets. All field names disappear when an object is serialized, but reinstantiated on deserialization according to the schema.
+
+## SSZ Types
+
+There are three SSZ type categories: basic, composite and special. Distinguishing which categoriy a particular element is in is important because it determines how it is serialized. The table below shows which types fal into which category:
+
+```
+Category   |   Type             |            Definition                |  Illegal properties
+-----------------------------------------------------------------------------------
+BASIC      |  uintN             | N can be [8, 16, 32, 64, 128, 256]   |
+           |  Bool              | true or false                        | 
+           |                    |                                      |
+COMPOSITE  | Vector[type, N]    | fixed length (N), homogenous type    | empty
+           | List[type, N]      | variable length (<N), homogenous type| 
+           | Container[         | heterogeneous types organised in     | no fields
+           |  fieldA: [type],   |   key-value pairs                    |
+           |  fieldN: [type],   |                                      |
+           | ]                  |                                      |
+           | Union[type1, type2]| Union (either/or) of valid SSZtypes  | null type at idx 0                 
+           |                    |                                      |
+SPECIAL    | Bitvector[N]       | Vector of Bools,length N             | empty
+           | Bitlist            | List of Bools, length <N             |
+           | Root               | Merkle root of composite SSZ type    |
+           |                    |                                      |
+           
+```
 
 <br>
 <br>
@@ -93,25 +118,35 @@ So the actual values for variable-length types are stored in a heap at the end o
 
 ## Merkleization
 
-This serialized object can then be merkleized - that is transformed into a Merkle-tree representation of the same data. First, the number of 32 bit chunks in the serialized object is determined. These are the "leaves" of the tree. With 8 leaves there will be 3 levels to the tree (i.e. its depth is 3). This is because each element is hashed with one partner in each level, causing the number of elements to halve each time./ Three halvings of eight equals one, and this one is the root hash. In our exampel above, the first leaf will be the value of `number1` padded to 32 bits:
+This serialized object can then be merkleized - that is transformed into a Merkle-tree representation of the same data. First, the number of 32-byte chunks in the serialized object is determined. These are the "leaves" of the tree. Basic types are serialized directly (i.e. they are simply converted to bytes objects and, where necessary, right-padded to 32 bytes). For example, in the `beacon_state` the `genesis_time` is a single leaf chunk because it is a basic type that gets serialized directly to one 32 byte chunk. Same goes for the `genesis_validators_root` which is serialized directly as 32 bytes. and the same for `slot` which is a uint64 and serialized to 32 bytes (8 bytes of data and 24 bytes of zero-padding). However, the next field in `beacon_state` is `Fork` which is a container. `Fork` contains 3 fields (`current_version`,`epoch`,`previous_version`). This means the "tree" of objects has some additional depth here compared to the simple types. The Merkle tree representing the `beacon_state` object will contain a root in the node immediately right of the leaf representing `slot` and this node will have two children, ech of which will have two children. The reason for this is because there are three fields that must converge to a single root at the depth of the `slot` leaf. This means each field must hash with another. The number of leaves must be a power of two so that each leaf has a hash partner, so at the bottom level we need four values to represent the three fields. The fourth is 32 bytes of zeros. Then the two pairs of values hash together to produce two hashes that themselves hash together to provide the root representing the `Fork` object. Diagramatically, for this subset of the `beacon_state`:
 
-[37, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] = leaf 1
-<br>
-[55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] = leaf 2
+```
+                __root__
+             /            \
+            /              \ 
+           /                \
+          /                  \
+         node1                node2
+         hash                  hash
+       /       \                 / \
+      /         \               /   \
+     /           \             |     \
+   leaf1          leaf2       leaf3   node3 
+  genesis_time  gen_val_root  slot    hash
+  as bytes       as bytes    as bytes  /   \
+                                      /     \    
+                                     /       \    
+                          node4 hash          node5 hash
+                         /      \            /         \    
+                        /        \          /           \            
+                    leaf4       leaf5      leaf6           leaf7
+             current_version    epoch     previous_version    32-byte zeros
+               as bytes         as bytes     as bytes           
+```
 
-These leaves sit at the lowest level of the tree - level 3 in this case - and they are hashed together to form a node in level 2. In the diagram below leaf1 and leaf2 hash to form node 1. Leaf3 and leaf4 hash to form node2. Node1 and node2 hash to form the root. If there are an odd number of leaves, the last leaf is hashed with 32 zeros.
-<br>
-<br>
-```
-      __root__
-     /        \
-    node1      node2
-   /   \     /    \
-leaf1 leaf2 leaf3  leaf4
-```
-<br>
-<br>
-Instead of referring to these tree lements as leaf X, node X etc, we can give them generalized indices, starting with root = 1 and counting from left to right along each level. This is the generalized index explained above. Each element in the serialized list has a generalized index equal to `2**depth + idx` where idx is its zero-indexed position in the serialized object and the depth is the number of levels in the Merkle tree, which can be determined as the square root of the number of elements (leaves). 
+
+
+Instead of referring to these tree elements as leaf X, node X etc, we can give them generalized indices, starting with root = 1 and counting from left to right along each level. This is the generalized index explained above. Each element in the serialized list has a generalized index equal to `2**depth + idx` where idx is its zero-indexed position in the serialized object and the depth is the number of levels in the Merkle tree, which can be determined as the square root of the number of elements (leaves). 
 
 <br>
 <br>
@@ -157,7 +192,7 @@ key                               |    type         |   fixed/var size   | leaf 
 -------------------------------------------------------------------------------------
 balances                          |   vec<u64>      |     fixed          |  0
 block_roots                       |   vec<vec<u8>>  |     variable       |  1
-current_epoch_participation       |   vec<u8>       |     fixed          |  2
+current_epoch_participation       |   vec<bool>     |     fixed          |  2
 current_justified_checkpoint      |   Checkpoint    |     fixed          |  
     epoch                         |   u32           |     fixed          |  3
     root                          |   vec<u8>       |     fixed          |  4
@@ -191,7 +226,7 @@ latest_block_header               |   BlockHeader   |     fixed          |
 next_sync_committee               |   SyncCommittee |     fixed          |  
     pubkeys                       |   String        |     fixed          |  27
     aggregate_pubkey              |   String        |     fixed          |  28
-previous_epoch_participation      |   vec<u8>       |     fixed          |  29
+previous_epoch_participation      |   vec<bool>     |     fixed          |  29
 previous_justified_checkpoint     |   Checkpoint    |     fixed          |  
     epoch                         |   u64           |     fixed          |  30
     root                          |   String        |     fixed          |  31
@@ -207,15 +242,7 @@ validators                        |   vec<u64>      |     fixed          |  36
 
 ## Outstanding Questions:
 
-<b>QUESTION</b> How does the deserialization then know where the end of each fixed-size value is in the "heap" at the end?
-<br>
-<b>QUESTION</b> How does the deserialization know which elements are values and which are offsets?
-<br>
-<b>QUESTION</b> What happens to the field names?
-<br>
-<b>QUESTION</b> Should the generalized indices in the light client object just be the specific indices for the data, or the full "path" through the
-hash-tree? i.e. for gen_idx = 10 in the following tree (presumably just [10], as the path can be recomputed pretty easily).
-<br>
+
 <b>QUESTION</b> do the `historical_roots`, `slashings`, `state_roots` and `eth1data_votes` have variable sizes? Is there a certain number of historical elements to include? Is this a design decision for the light client/server? 
 <br>
 <b>QUESTION</b> Am I thinking about the leaf numbers right in the table above? i.e. skipping outer containers and only considering the actual data inside.
