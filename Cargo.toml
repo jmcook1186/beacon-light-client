@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "1", features = ["full"]}
-reqwest = { version = "0.11", features = ["json"]}
 eventsource-client = { git = "https://github.com/ralexstokes/rust-eventsource-client", branch = "handle-rn-line-ending" }
 futures = "0.3"
 warp = "0.3.1"
@@ -23,6 +22,8 @@ slot_clock = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 proto_array = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 base64 = "0.13.0"
 rand = "0.8.4"
+reqwest = { version = "0.11.6", features = ["blocking"] }
+libmath = "0.1.4"
 
 [patch]
 [patch.crates-io]
