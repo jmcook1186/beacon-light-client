@@ -6,7 +6,7 @@ mod query_node;
 //mod build_objects;
 use std::mem;
 use std::option;
-use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch};
+use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch, Validator};
 use std::sync::Arc;
 use math::round;
 
@@ -20,13 +20,14 @@ fn main(){
 
     let state: BeaconState<MainnetEthSpec> = get_state(&api_key, &state_id, &endpoint_prefix);
     let snapshot = make_snapshot(&state);
-    
-    
-    let epoch: Epoch =state.slot().epoch(32); //32 slots per epoch https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
-    
-    println!("{:?}",epoch);
+    let current_epoch: Epoch =state.slot().epoch(32);
+    let validator_indices = get_active_validators(&state, &current_epoch);
+    println!("{:?}", validator_indices);
     
 }
+
+
+
 
 
 pub fn get_state(api_key: &str, state_id: &str, endpoint_prefix: &str)->BeaconState<MainnetEthSpec>{
@@ -63,21 +64,40 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
 }
 
 
-// pub fn get_next_sync_committee_indices(state: BeaconState<MainnetEthSpec>) -> Something:
+pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
 
-//     """
-//     Return the sync committee indices, with possible duplicates, for the next sync committee.
-//     """
-//     use math::round;
+    // """
+    // Return the sync committee indices, with possible duplicates, for the next sync committee.
+    // """
 
-//     slot = state.slot().parse::<u32>().unwrap();
-//     epoch = round::floor(slot/32,0) + 1; //32 slots per epoch https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
-//     println!("{:?}",epoch);
+    // divide slot by 32 slots per epoch using method of Slot type, see type definition:
+    // /home/joe/Code/lighthouse/consensus/types/src/slot_epoch.rs
+    // and in spec: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
+    let current_epoch: Epoch =state.slot().epoch(32);
+    let next_epoch = current_epoch+1; 
+
+    //const MAX_RANDOM_BYTE: u64 = 2**8 - 1;
+
+
+    //let active_validator_indices = get_active_validators(&state);
+    // //https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#get_active_validator_indices
+    // def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+    // """
+    // Return the sequence of active validator indices at ``epoch``.
+    // """
+    // return [ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)]
+
+
+    // // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#is_active_validator
+    // def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
+    // """
+    // Check if ``validator`` is active.
+    // """
+    // return validator.activation_epoch <= epoch < validator.exit_epoch
 
 
 
 
-    // MAX_RANDOM_BYTE = 2**8 - 1
     // active_validator_indices = get_active_validator_indices(state, epoch)
     // active_validator_count = uint64(len(active_validator_indices))
     // seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
@@ -92,8 +112,22 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
     //         sync_committee_indices.append(candidate_index)
     //     i += 1
     // return sync_committee_indices
+}
 
 
+pub fn get_active_validators(state: &BeaconState<MainnetEthSpec>, epoch: &Epoch)->Vec<u64>{
+    
+    let mut active_validator_indices: Vec<u64>= vec![];
+    
+    let mut count:u64 = 0;
+    for i in 0..state.validators().len(){
+        if (state.validators()[i].activation_epoch <= epoch.to_owned()){
+        active_validator_indices.push(count);
+        }
+        count+=1;
+    }
+    return active_validator_indices
+  }
 
 pub struct LightClientSnapshot{
     pub header: eth2::types::BeaconBlockHeader,
