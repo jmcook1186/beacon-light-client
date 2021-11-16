@@ -49,16 +49,18 @@ pub struct LightClientSnapshot{
 // }
 
 
-// pub struct LightClientUpdate{
-//     pub header: eth2::types::BeaconBlockHeader,
-//     pub next_sync_committee: Arc<eth2::types::SyncCommittee<MainnetEthSpec>>,
-//     pub next_sync_committee_branch: Vec<u8>,
-//     pub finality_header: BeaconBlockHeader,
-//     pub finality_branch: Vec<u8>,
-//     pub sync_committee_bits: Vec<u8>,
-//     pub sync_committee_signature: String,
-//     pub fork_version: String,
-// }
+pub struct LightClientUpdate{
+    pub header: eth2::types::BeaconBlockHeader,
+    pub next_sync_committee: Arc<eth2::types::SyncCommittee<MainnetEthSpec>>,
+    pub next_sync_committee_branch: Vec<bytes>,
+    pub finality_header: eth2::types::BeaconBlockHeader,
+    pub finality_branch: Vec<bytes>,
+    pub sync_committee_bits: Vec<bool>,
+    pub sync_committee_signature: Root,
+    pub fork_version: String,
+}
+
+
 
 // pub struct Checkpoint{
 //     pub epoch: u64,

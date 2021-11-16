@@ -7,8 +7,10 @@ mod query_node;
 use std::mem;
 use std::option;
 use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch, Validator};
+use eth2_hashing::{hash};
 use std::sync::Arc;
 use math::round;
+extern crate hex;
 
 fn main(){
     
@@ -23,11 +25,20 @@ fn main(){
     let current_epoch: Epoch =state.slot().epoch(32);
     let validator_indices = get_active_validators(&state, &current_epoch);
     println!("{:?}", validator_indices);
+
+    // test implementation of LH hash func using junk bytes
+    // source code is at /home/joe/Code/lighthouse/crypto/eth2_hashing/src/lib.rs
+    let test_bytes: [u8; 5] = b"hello".to_owned();
+    let test = hash(&test_bytes[0..5]);
+    println!("{:?}",hex::encode(test));
     
 }
 
 
 
+
+
+// HEAP OF FUNCS (TO BE ORGANISED INTO SENSIBLE PROJECT STRUCTURE LATER)
 
 
 pub fn get_state(api_key: &str, state_id: &str, endpoint_prefix: &str)->BeaconState<MainnetEthSpec>{
@@ -47,6 +58,8 @@ pub fn get_state(api_key: &str, state_id: &str, endpoint_prefix: &str)->BeaconSt
 }
 
 
+
+
 pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
 
     let header = state.latest_block_header();
@@ -64,6 +77,8 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
 }
 
 
+
+
 pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
 
     // """
@@ -78,28 +93,13 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
 
     //const MAX_RANDOM_BYTE: u64 = 2**8 - 1;
 
+    let active_validator_indices = get_active_validators(&state, &current_epoch);
+    let active_validator_count = active_validator_indices.len();
+    
+    let test_bytes: [u8; 5] = b"hello".to_owned();
+    let test = hash(&test_bytes[0..1]);
+    println!("{:?}",test);
 
-    //let active_validator_indices = get_active_validators(&state);
-    // //https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#get_active_validator_indices
-    // def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
-    // """
-    // Return the sequence of active validator indices at ``epoch``.
-    // """
-    // return [ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)]
-
-
-    // // https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#is_active_validator
-    // def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
-    // """
-    // Check if ``validator`` is active.
-    // """
-    // return validator.activation_epoch <= epoch < validator.exit_epoch
-
-
-
-
-    // active_validator_indices = get_active_validator_indices(state, epoch)
-    // active_validator_count = uint64(len(active_validator_indices))
     // seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     // i = 0
     // sync_committee_indices: List[ValidatorIndex] = []
@@ -114,9 +114,23 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
     // return sync_committee_indices
 }
 
+// pub fn get_seed(state: &BeaconState<MainnetEthSpec>)->Vec<u8>{
+    
+//     // need a merkle hash library
+    
+//     //SPEC
+//     // def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
+//     //     """
+//     //     Return the seed at ``epoch``.
+//     //     """
+//     //     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
+//     //     return hash(domain_type + uint_to_bytes(epoch) + mix)
+// }
+
 
 pub fn get_active_validators(state: &BeaconState<MainnetEthSpec>, epoch: &Epoch)->Vec<u64>{
-    
+    // See consensus-spec:
+    //https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#get_active_validator_indices
     let mut active_validator_indices: Vec<u64>= vec![];
     
     let mut count:u64 = 0;
@@ -128,6 +142,8 @@ pub fn get_active_validators(state: &BeaconState<MainnetEthSpec>, epoch: &Epoch)
     }
     return active_validator_indices
   }
+
+
 
 pub struct LightClientSnapshot{
     pub header: eth2::types::BeaconBlockHeader,
