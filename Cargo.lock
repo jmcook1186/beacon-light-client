@@ -3059,6 +3059,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
+ "bytes 1.1.0",
  "clap 3.0.0-beta.5",
  "eth2",
  "eth2_hashing 0.2.0 (git+https://github.com/sigp/lighthouse?branch=stable)",

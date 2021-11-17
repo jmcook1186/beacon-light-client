@@ -2,7 +2,6 @@ use std::format;
 use std::fs;
 mod node_discovery;
 mod http_requests;
-mod query_node;
 //mod build_objects;
 use std::mem;
 use std::option;
@@ -11,6 +10,7 @@ use eth2_hashing::{hash};
 use std::sync::Arc;
 use math::round;
 extern crate hex;
+use bytes::{BufMut, BytesMut};
 
 fn main(){
     
@@ -24,13 +24,17 @@ fn main(){
     let snapshot = make_snapshot(&state);
     let current_epoch: Epoch =state.slot().epoch(32);
     let validator_indices = get_active_validators(&state, &current_epoch);
-    println!("{:?}", validator_indices);
+
+    let current_epoch: Epoch =state.slot().epoch(32);
+    
+    let seed = get_seed(&state,&current_epoch);
+
 
     // test implementation of LH hash func using junk bytes
     // source code is at /home/joe/Code/lighthouse/crypto/eth2_hashing/src/lib.rs
-    let test_bytes: [u8; 5] = b"hello".to_owned();
-    let test = hash(&test_bytes[0..5]);
-    println!("{:?}",hex::encode(test));
+    // let test_bytes: [u8; 5] = b"hello".to_owned();
+    // let test = hash(&test_bytes[0..5]);
+    // println!("{:?}",hex::encode(test));
     
 }
 
@@ -90,15 +94,12 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
     // and in spec: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
     let current_epoch: Epoch =state.slot().epoch(32);
     let next_epoch = current_epoch+1; 
-
+    
     //const MAX_RANDOM_BYTE: u64 = 2**8 - 1;
 
     let active_validator_indices = get_active_validators(&state, &current_epoch);
     let active_validator_count = active_validator_indices.len();
     
-    let test_bytes: [u8; 5] = b"hello".to_owned();
-    let test = hash(&test_bytes[0..1]);
-    println!("{:?}",test);
 
     // seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     // i = 0
@@ -114,17 +115,36 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
     // return sync_committee_indices
 }
 
-// pub fn get_seed(state: &BeaconState<MainnetEthSpec>)->Vec<u8>{
+pub fn get_seed(state: &BeaconState<MainnetEthSpec>, _epoch: &Epoch)->Vec<u8>{
     
-//     // need a merkle hash library
+    const base: u64 = 2;
+    let EPOCHS_PER_HISTORICAL_VECTOR: u64 = base.pow(16); 
+    const MIN_SEED_LOOKAHEAD: u64 = 1;
+
+    let epoch = _epoch.as_u64();
+    let epoch_as_bytes = int_to_bytes32(epoch);
+    let idx = epoch % EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD -1;
+    let mix = state.randao_mixes()[idx as usize].as_bytes();
+    let mut domain_type: Vec<u8> = hex::decode("02000000").unwrap();
     
-//     //SPEC
-//     // def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
-//     //     """
-//     //     Return the seed at ``epoch``.
-//     //     """
-//     //     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-//     //     return hash(domain_type + uint_to_bytes(epoch) + mix)
+    domain_type.extend(epoch_as_bytes);
+    domain_type.extend(mix);
+
+    let seed = hash(&domain_type);
+
+    return seed
+}
+
+    // let seed = hash(b'0x02000000' + epoch_as_bytes + mix);
+    // need a merkle hash library
+    
+//     SPEC
+//     def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
+//         """
+//         Return the seed at ``epoch``.
+//         """
+//         mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
+//         return hash(domain_type + uint_to_bytes(epoch) + mix)
 // }
 
 
@@ -151,3 +171,11 @@ pub struct LightClientSnapshot{
     pub next_sync_committee: Arc<eth2::types::SyncCommittee<MainnetEthSpec>>,
 }
 
+
+//Returns `int` as little-endian bytes with a length of 32.
+pub fn int_to_bytes32(int: u64) -> Vec<u8> {
+    let mut bytes = BytesMut::with_capacity(32);
+    bytes.put_u64_le(int);
+    bytes.resize(32, 0);
+    bytes.to_vec()
+}

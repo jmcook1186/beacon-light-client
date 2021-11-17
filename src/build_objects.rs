@@ -20,19 +20,19 @@ pub fn make_snapshot(state: &BeaconState)-> LightClientSnapshot{
 }
 
 
-pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
+// pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
     
-    // initialize with empty update vec
-    let empty_updates: Vec<LightClientUpdate> = vec![];
+//     // initialize with empty update vec
+//     let empty_updates: Vec<LightClientUpdate> = vec![];
 
-    let store = LightClientStore{
-        snapshot: snapshot,
-        valid_updates: empty_updates,
-    };
+//     let store = LightClientStore{
+//         snapshot: snapshot,
+//         valid_updates: empty_updates,
+//     };
 
 
-    return store
-}
+//     return store
+// }
 
 
 // pub fn update_store(mut store: LightClientStore, snapshot: LightClientSnapshot, update: LightClientUpdate)->LightClientStore{
