@@ -27,21 +27,15 @@ fn main(){
 
     let current_epoch: Epoch =state.slot().epoch(32);
     
-    let seed = get_seed(&state,&current_epoch);
+    get_next_sync_committee_indices(&state);
 
-
-    // test implementation of LH hash func using junk bytes
-    // source code is at /home/joe/Code/lighthouse/crypto/eth2_hashing/src/lib.rs
-    // let test_bytes: [u8; 5] = b"hello".to_owned();
-    // let test = hash(&test_bytes[0..5]);
-    // println!("{:?}",hex::encode(test));
     
 }
 
 
 
 
-
+///////////////////////////////////////////////////////////////////////
 // HEAP OF FUNCS (TO BE ORGANISED INTO SENSIBLE PROJECT STRUCTURE LATER)
 
 
@@ -99,9 +93,10 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
 
     let active_validator_indices = get_active_validators(&state, &current_epoch);
     let active_validator_count = active_validator_indices.len();
-    
+    let domain_sync_committee = "07000000".to_string();
 
-    // seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
+    let seed = get_seed(&state, &current_epoch, &domain_sync_committee);
+    
     // i = 0
     // sync_committee_indices: List[ValidatorIndex] = []
     // while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
@@ -115,7 +110,7 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
     // return sync_committee_indices
 }
 
-pub fn get_seed(state: &BeaconState<MainnetEthSpec>, _epoch: &Epoch)->Vec<u8>{
+pub fn get_seed(state: &BeaconState<MainnetEthSpec>, _epoch: &Epoch, domain_sync_committee: &String)->Vec<u8>{
     
     const base: u64 = 2;
     let EPOCHS_PER_HISTORICAL_VECTOR: u64 = base.pow(16); 
@@ -125,7 +120,7 @@ pub fn get_seed(state: &BeaconState<MainnetEthSpec>, _epoch: &Epoch)->Vec<u8>{
     let epoch_as_bytes = int_to_bytes32(epoch);
     let idx = epoch % EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD -1;
     let mix = state.randao_mixes()[idx as usize].as_bytes();
-    let mut domain_type: Vec<u8> = hex::decode("02000000").unwrap();
+    let mut domain_type: Vec<u8> = hex::decode(domain_sync_committee).unwrap();
     
     domain_type.extend(epoch_as_bytes);
     domain_type.extend(mix);
