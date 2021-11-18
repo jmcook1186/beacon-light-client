@@ -45,7 +45,7 @@ pub fn make_snapshot(state: &BeaconState)-> LightClientSnapshot{
 // }
 
 
-// pub fn get_update(state: &serde_json::Value, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
+//pub fn get_update(state: &BeaconState<MainnetEthSpec>, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
 
 
 //     let new_header = state.latest_block_header;

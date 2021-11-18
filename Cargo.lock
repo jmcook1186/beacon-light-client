@@ -3075,6 +3075,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slot_clock",
+ "swap_or_not_shuffle",
  "thiserror",
  "tokio",
  "toml",

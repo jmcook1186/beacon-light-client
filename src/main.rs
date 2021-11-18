@@ -5,11 +5,13 @@ mod http_requests;
 //mod build_objects;
 use std::mem;
 use std::option;
-use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch, Validator};
+use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch, Validator, BeaconBlockAltair};
 use eth2_hashing::{hash};
 use std::sync::Arc;
 use math::round;
 extern crate hex;
+use swap_or_not_shuffle::compute_shuffled_index;
+
 use bytes::{BufMut, BytesMut};
 
 fn main(){
@@ -22,14 +24,14 @@ fn main(){
 
     let state: BeaconState<MainnetEthSpec> = get_state(&api_key, &state_id, &endpoint_prefix);
     let snapshot = make_snapshot(&state);
+    
     let current_epoch: Epoch =state.slot().epoch(32);
     let validator_indices = get_active_validators(&state, &current_epoch);
 
-    let current_epoch: Epoch =state.slot().epoch(32);
+    let block = get_block(&api_key, &state_id, &endpoint_prefix);
     
-    get_next_sync_committee_indices(&state);
-
-    
+    println!("{:?}",block);
+        
 }
 
 
@@ -76,27 +78,61 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
 
 
 
+pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str){
 
-pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
-
-    // """
-    // Return the sync committee indices, with possible duplicates, for the next sync committee.
-    // """
-
-    // divide slot by 32 slots per epoch using method of Slot type, see type definition:
-    // /home/joe/Code/lighthouse/consensus/types/src/slot_epoch.rs
-    // and in spec: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
-    let current_epoch: Epoch =state.slot().epoch(32);
-    let next_epoch = current_epoch+1; 
+    use serde_json::json;
+    let block_body_suffix: String = format!("v2/beacon/blocks/{}", &state_id);
+    let endpoint = String::from(endpoint_prefix)+&block_body_suffix;
+    let client = reqwest::blocking::ClientBuilder::new()
+    .timeout(None)
+      .build()
+        .unwrap();
+    let req = client.get(endpoint).send().unwrap();
+    let resp: BeaconBlockAltair<MainnetEthSpec> = req.json().unwrap();
     
-    //const MAX_RANDOM_BYTE: u64 = 2**8 - 1;
 
-    let active_validator_indices = get_active_validators(&state, &current_epoch);
-    let active_validator_count = active_validator_indices.len();
-    let domain_sync_committee = "07000000".to_string();
+}
 
-    let seed = get_seed(&state, &current_epoch, &domain_sync_committee);
+
+// pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
+
+//     // """
+//     // Return the sync committee indices, with possible duplicates, for the next sync committee.
+//     // """
+
+//     // divide slot by 32 slots per epoch using method of Slot type, see type definition:
+//     // /home/joe/Code/lighthouse/consensus/types/src/slot_epoch.rs
+//     // and in spec: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_epoch_at_slot
     
+//     const SYNC_COMMITTEE_SIZE:u64 = 512;
+//     let current_epoch: Epoch =state.slot().epoch(32);
+//     let next_epoch = current_epoch+1; 
+    
+//     //const MAX_RANDOM_BYTE: u64 = 2**8 - 1;
+
+//     let active_validator_indices = get_active_validators(&state, &current_epoch);
+//     let active_validator_count = active_validator_indices.len();
+//     let domain_sync_committee = "07000000".to_string();
+
+//     let seed = get_seed(&state, &current_epoch, &domain_sync_committee);
+    
+//     let idx: usize = 135;
+//     let index_count: usize = 1;
+    
+//     let mut count = 0;
+//     sync_committee_indices: List[u64] =[];
+//     while len(sync_committee_indices< SYNC_COMMITTEE_SIZE){
+        
+//         let shuffled_index = compute_shuffled_index((count % active_validator_count).as usize, active_validator_count as size, seed);
+//         let candidate_index = active_validator_indices[shuffled_index];
+        
+        
+//         uint_to_bytes
+
+
+//         let random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+//     }
+
     // i = 0
     // sync_committee_indices: List[ValidatorIndex] = []
     // while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
@@ -108,7 +144,39 @@ pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
     //         sync_committee_indices.append(candidate_index)
     //     i += 1
     // return sync_committee_indices
-}
+//}
+
+
+
+
+// SPEC: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_shuffled_index
+
+// def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) -> uint64:
+//     """
+//     Return the shuffled index corresponding to ``seed`` (and ``index_count``).
+//     """
+//     assert index < index_count
+
+//     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+//     # See the 'generalized domain' algorithm on page 3
+//     for current_round in range(SHUFFLE_ROUND_COUNT):
+//         pivot = bytes_to_uint64(hash(seed + uint_to_bytes(uint8(current_round)))[0:8]) % index_count
+//         flip = (pivot + index_count - index) % index_count
+//         position = max(index, flip)
+//         source = hash(
+//             seed
+//             + uint_to_bytes(uint8(current_round))
+//             + uint_to_bytes(uint32(position // 256))
+//         )
+//         byte = uint8(source[(position % 256) // 8])
+//         bit = (byte >> (position % 8)) % 2
+//         index = flip if bit else index
+
+//     return index
+
+
+
+
 
 pub fn get_seed(state: &BeaconState<MainnetEthSpec>, _epoch: &Epoch, domain_sync_committee: &String)->Vec<u8>{
     
