@@ -2,23 +2,19 @@ use std::format;
 use std::fs;
 mod node_discovery;
 mod http_requests;
-//mod build_objects;
-use std::mem;
-use std::option;
-use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, SyncCommittee, BeaconBlockHeader, Epoch, Validator, BeaconBlockAltair};
+// use http_api::version::{fork_versioned_response, unsupported_version_rejection, V1};
+use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, Epoch, SignedBeaconBlock, ForkVersionedResponse};
 use eth2_hashing::{hash};
 use std::sync::Arc;
-use math::round;
 extern crate hex;
 use swap_or_not_shuffle::compute_shuffled_index;
-
 use bytes::{BufMut, BytesMut};
 
 fn main(){
     
     // set basic vars and get api key from secret
     let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
-    let state_id = "head";
+    let state_id = "finalized";
     let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope"); 
     let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
 
@@ -78,7 +74,7 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
 
 
 
-pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str){
+pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str)->SignedBeaconBlock<MainnetEthSpec>{
 
     use serde_json::json;
     let block_body_suffix: String = format!("v2/beacon/blocks/{}", &state_id);
@@ -87,9 +83,13 @@ pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str){
     .timeout(None)
       .build()
         .unwrap();
+
     let req = client.get(endpoint).send().unwrap();
-    let resp: BeaconBlockAltair<MainnetEthSpec> = req.json().unwrap();
-    
+    let resp: ForkVersionedResponse<SignedBeaconBlock<MainnetEthSpec>> = req.json().unwrap();
+    let block = resp.data;
+    //dbg!(block);
+
+    return block
 
 }
 

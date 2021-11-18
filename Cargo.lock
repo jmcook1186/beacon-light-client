@@ -319,6 +319,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "065374052e7df7ee4047b1160cca5e1467a12351a40b3da123c870ba0b8eda2a"
 
 [[package]]
+name = "attohttpc"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baf13118df3e3dce4b5ac930641343b91b656e4e72c8f8325838b01a4b1c9d45"
+dependencies = [
+ "http",
+ "log",
+ "url",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,6 +380,62 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "beacon_chain"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "bitvec 0.19.5",
+ "bls",
+ "derivative",
+ "eth1",
+ "eth2",
+ "eth2_hashing 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "eth2_ssz",
+ "eth2_ssz_derive",
+ "eth2_ssz_types",
+ "fork_choice",
+ "futures",
+ "genesis",
+ "int_to_bytes",
+ "itertools",
+ "lazy_static",
+ "lighthouse_metrics",
+ "logging",
+ "lru",
+ "merkle_proof",
+ "operation_pool",
+ "parking_lot",
+ "proto_array",
+ "rand 0.7.3",
+ "rayon",
+ "safe_arith",
+ "serde",
+ "serde_derive",
+ "slasher",
+ "slog",
+ "sloggers",
+ "slot_clock",
+ "smallvec",
+ "state_processing",
+ "store",
+ "strum",
+ "task_executor",
+ "tempfile",
+ "tokio",
+ "tree_hash",
+ "types",
+]
+
+[[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -382,6 +449,18 @@ checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
 dependencies = [
  "either",
  "radium 0.3.0",
+]
+
+[[package]]
+name = "bitvec"
+version = "0.19.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8942c8d352ae1838c9dda0b0ca2ab657696ef2232a20147cf1b30ae1a9cb4321"
+dependencies = [
+ "funty",
+ "radium 0.5.3",
+ "tap",
+ "wyz",
 ]
 
 [[package]]
@@ -863,6 +942,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a19c6cedffdc8c03a3346d723eb20bd85a13362bb96dc2ac000842c6381ec7bf"
+dependencies = [
+ "nix",
+ "winapi",
+]
+
+[[package]]
 name = "cuckoofilter"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1256,6 +1345,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "environment"
+version = "0.1.2"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "ctrlc",
+ "eth2_config",
+ "eth2_network_config",
+ "exit-future",
+ "filesystem",
+ "futures",
+ "logging",
+ "slog",
+ "slog-async",
+ "slog-json",
+ "slog-term",
+ "sloggers",
+ "task_executor",
+ "tokio",
+ "types",
+]
+
+[[package]]
 name = "error-chain"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1263,6 +1374,33 @@ checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
 dependencies = [
  "backtrace",
  "version_check",
+]
+
+[[package]]
+name = "eth1"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "eth2",
+ "eth2_ssz",
+ "eth2_ssz_derive",
+ "fallback",
+ "futures",
+ "hex 0.4.3",
+ "lazy_static",
+ "lighthouse_metrics",
+ "merkle_proof",
+ "parking_lot",
+ "reqwest",
+ "sensitive_url",
+ "serde",
+ "serde_json",
+ "slog",
+ "state_processing",
+ "task_executor",
+ "tokio",
+ "tree_hash",
+ "types",
 ]
 
 [[package]]
@@ -1583,6 +1721,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fallback"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "itertools",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1702,6 +1848,17 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
+
+[[package]]
+name = "fork_choice"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "eth2_ssz",
+ "eth2_ssz_derive",
+ "proto_array",
+ "types",
+]
 
 [[package]]
 name = "form_urlencoded"
@@ -1870,6 +2027,26 @@ checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
  "version_check",
+]
+
+[[package]]
+name = "genesis"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "environment",
+ "eth1",
+ "eth2_hashing 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "eth2_ssz",
+ "futures",
+ "int_to_bytes",
+ "merkle_proof",
+ "rayon",
+ "slog",
+ "state_processing",
+ "tokio",
+ "tree_hash",
+ "types",
 ]
 
 [[package]]
@@ -2146,6 +2323,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "http_api"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "beacon_chain",
+ "bs58",
+ "eth1",
+ "eth2",
+ "eth2_libp2p",
+ "eth2_ssz",
+ "futures",
+ "hex 0.4.3",
+ "lazy_static",
+ "lighthouse_metrics",
+ "lighthouse_version",
+ "network",
+ "serde",
+ "slog",
+ "slot_clock",
+ "state_processing",
+ "tokio",
+ "tokio-stream",
+ "types",
+ "warp 0.3.0",
+ "warp_utils",
+]
+
+[[package]]
 name = "httparse"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2272,6 +2477,19 @@ dependencies = [
  "libc",
  "log",
  "winapi",
+]
+
+[[package]]
+name = "igd"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fd32c880165b2f776af0b38d206d1cabaebcf46c166ac6ae004a5d45f7d48ef"
+dependencies = [
+ "attohttpc",
+ "log",
+ "rand 0.7.3",
+ "url",
+ "xmltree",
 ]
 
 [[package]]
@@ -3066,6 +3284,7 @@ dependencies = [
  "eventsource-client",
  "futures",
  "hex 0.3.2",
+ "http_api",
  "libmath",
  "log",
  "pretty_env_logger",
@@ -3079,7 +3298,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "toml",
- "warp",
+ "warp 0.3.1",
 ]
 
 [[package]]
@@ -3105,6 +3324,28 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "lmdb"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b0908efb5d6496aa977d96f91413da2635a902e5e31dbef0bfb88986c248539"
+dependencies = [
+ "bitflags",
+ "libc",
+ "lmdb-sys",
+]
+
+[[package]]
+name = "lmdb-sys"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5b392838cfe8858e86fac37cf97a0e8c55cc60ba0a18365cadc33092f128ce9"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+]
 
 [[package]]
 name = "lock_api"
@@ -3134,6 +3375,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "logging"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "lazy_static",
+ "lighthouse_metrics",
+ "slog",
+ "slog-term",
+ "sloggers",
+]
+
+[[package]]
 name = "lru"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3149,6 +3402,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31e24f1ad8321ca0e8a1e0ac13f23cb668e6f5466c2c57319f6a5cf1cc8e3b1c"
 dependencies = [
  "linked-hash-map",
+]
+
+[[package]]
+name = "lru_cache"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "fnv",
 ]
 
 [[package]]
@@ -3390,6 +3651,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "network"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "beacon_chain",
+ "error-chain",
+ "eth2_libp2p",
+ "eth2_ssz",
+ "eth2_ssz_types",
+ "fnv",
+ "futures",
+ "hashset_delay",
+ "hex 0.4.3",
+ "if-addrs",
+ "igd",
+ "itertools",
+ "lazy_static",
+ "lighthouse_metrics",
+ "lru_cache",
+ "num_cpus",
+ "rand 0.7.3",
+ "rlp 0.5.1",
+ "slog",
+ "slot_clock",
+ "smallvec",
+ "store",
+ "strum",
+ "task_executor",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "types",
+]
+
+[[package]]
 name = "nix"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3555,6 +3851,26 @@ dependencies = [
  "openssl-src",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "operation_pool"
+version = "0.2.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "derivative",
+ "eth2_ssz",
+ "eth2_ssz_derive",
+ "itertools",
+ "lazy_static",
+ "lighthouse_metrics",
+ "parking_lot",
+ "rayon",
+ "serde",
+ "serde_derive",
+ "state_processing",
+ "store",
+ "types",
 ]
 
 [[package]]
@@ -4049,6 +4365,12 @@ name = "radium"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
+
+[[package]]
+name = "radium"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "941ba9d78d8e2f7ce474c015eea4d9c6d25b6a3327f9832ee29a4de27f91bbb8"
 
 [[package]]
 name = "radium"
@@ -4734,6 +5056,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
+name = "slasher"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "bincode",
+ "byteorder",
+ "eth2_ssz",
+ "eth2_ssz_derive",
+ "filesystem",
+ "flate2",
+ "lazy_static",
+ "lighthouse_metrics",
+ "lmdb",
+ "lmdb-sys",
+ "parking_lot",
+ "rand 0.7.3",
+ "safe_arith",
+ "serde",
+ "serde_derive",
+ "slog",
+ "sloggers",
+ "tree_hash",
+ "tree_hash_derive",
+ "types",
+]
+
+[[package]]
 name = "slog"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4749,6 +5098,18 @@ dependencies = [
  "slog",
  "take_mut",
  "thread_local",
+]
+
+[[package]]
+name = "slog-json"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52e9b96fb6b5e80e371423b4aca6656eb537661ce8f82c2697e619f8ca85d043"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "slog",
 ]
 
 [[package]]
@@ -5310,6 +5671,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite 0.2.7",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -5387,6 +5749,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "tracing-futures"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
+dependencies = [
+ "pin-project 1.0.8",
+ "tracing",
 ]
 
 [[package]]
@@ -5810,6 +6182,36 @@ dependencies = [
 
 [[package]]
 name = "warp"
+version = "0.3.0"
+source = "git+https://github.com/macladson/warp?rev=dfa259e#dfa259e19b7490e6bc4bf247e8b76f671d29a0eb"
+dependencies = [
+ "bytes 1.1.0",
+ "futures",
+ "headers",
+ "http",
+ "hyper",
+ "log",
+ "mime",
+ "mime_guess",
+ "multipart",
+ "percent-encoding",
+ "pin-project 1.0.8",
+ "scoped-tls",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+ "tokio-rustls",
+ "tokio-stream",
+ "tokio-tungstenite",
+ "tokio-util",
+ "tower-service",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
+name = "warp"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "332d47745e9a0c38636dbd454729b147d16bd1ed08ae67b3ab281c4506771054"
@@ -5835,6 +6237,24 @@ dependencies = [
  "tokio-util",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "warp_utils"
+version = "0.1.0"
+source = "git+https://github.com/sigp/lighthouse?branch=stable#fff01b24ddedcd54486e374460855ca20d3dd232"
+dependencies = [
+ "beacon_chain",
+ "eth2",
+ "headers",
+ "lazy_static",
+ "lighthouse_metrics",
+ "safe_arith",
+ "serde",
+ "state_processing",
+ "tokio",
+ "types",
+ "warp 0.3.0",
 ]
 
 [[package]]
@@ -6061,6 +6481,21 @@ dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
  "zeroize",
+]
+
+[[package]]
+name = "xml-rs"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
+
+[[package]]
+name = "xmltree"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
+dependencies = [
+ "xml-rs",
 ]
 
 [[package]]
