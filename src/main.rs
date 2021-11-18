@@ -3,7 +3,7 @@ use std::fs;
 mod node_discovery;
 mod http_requests;
 // use http_api::version::{fork_versioned_response, unsupported_version_rejection, V1};
-use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, Epoch, SignedBeaconBlock, ForkVersionedResponse};
+use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, Epoch, SignedBeaconBlock, BeaconBlockBodyRef, ForkVersionedResponse};
 use eth2_hashing::{hash};
 use std::sync::Arc;
 extern crate hex;
@@ -18,15 +18,15 @@ fn main(){
     let api_key: String = fs::read_to_string(format!("/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",node_number.to_string())).expect("Nope"); 
     let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
 
+    // download beacon_state and make a snapshot
     let state: BeaconState<MainnetEthSpec> = get_state(&api_key, &state_id, &endpoint_prefix);
     let snapshot = make_snapshot(&state);
     
-    let current_epoch: Epoch =state.slot().epoch(32);
-    let validator_indices = get_active_validators(&state, &current_epoch);
-
+    // download a beacon block and extract the body
     let block = get_block(&api_key, &state_id, &endpoint_prefix);
+    let body: BeaconBlockBodyRef<MainnetEthSpec> = block.message().body();
+    println!("{:?}",body.randao_reveal());
     
-    println!("{:?}",block);
         
 }
 

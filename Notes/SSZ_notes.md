@@ -263,7 +263,3 @@ validators                        |   vec<u64>      |     fixed          |
 <br>
 <br>
 
-## Outstanding Questions:
-
-
-<b>QUESTION</b>: Where is the max length of `historical roots` defined? How does the schema determine what is data and what is padding in the serialized objects?
