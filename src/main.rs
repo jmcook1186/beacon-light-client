@@ -3,7 +3,8 @@ use std::fs;
 mod node_discovery;
 mod http_requests;
 // use http_api::version::{fork_versioned_response, unsupported_version_rejection, V1};
-use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, Epoch, SignedBeaconBlock, BeaconBlockBodyRef, ForkVersionedResponse};
+use eth2::types::{BeaconState, GenericResponse, MainnetEthSpec, Epoch, SignedBeaconBlock, BeaconBlockBodyRef, 
+    BeaconBlockHeader, SignedBeaconBlockHeader, ForkVersionedResponse, BlockHeaderData, BlockHeaderAndSignature};
 use eth2_hashing::{hash};
 use std::sync::Arc;
 extern crate hex;
@@ -19,19 +20,34 @@ fn main(){
     let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
 
     // download beacon_state and make a snapshot
-    let state: BeaconState<MainnetEthSpec> = get_state(&api_key, &state_id, &endpoint_prefix);
+    let state = get_state(&api_key, &state_id, &endpoint_prefix);
     let snapshot = make_snapshot(&state);
     
     // download a beacon block and extract the body
     let block = get_block(&api_key, &state_id, &endpoint_prefix);
-    let body: BeaconBlockBodyRef<MainnetEthSpec> = block.message().body();
-    println!("{:?}",body.randao_reveal());
-    
+    let body = block.message().body();
+    let header = get_header(&api_key, &state_id, &endpoint_prefix);
+
         
 }
 
 
 
+
+// pub struct LightClientUpdate(Container):
+    
+//     header: BeaconBlockHeader
+//     # Next sync committee corresponding to the header
+//     next_sync_committee: SyncCommittee
+//     next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)]
+//     # Finality proof for the update header
+//     finality_header: BeaconBlockHeader
+//     finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]
+//     # Sync committee aggregate signature
+//     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+//     sync_committee_signature: BLSSignature
+//     # Fork version for the aggregate signature
+//     fork_version: Version
 
 ///////////////////////////////////////////////////////////////////////
 // HEAP OF FUNCS (TO BE ORGANISED INTO SENSIBLE PROJECT STRUCTURE LATER)
@@ -50,6 +66,7 @@ pub fn get_state(api_key: &str, state_id: &str, endpoint_prefix: &str)->BeaconSt
     let req = client.get(endpoint).send().unwrap();
     let resp: GenericResponse<BeaconState<MainnetEthSpec>> = req.json().unwrap();
     let state = resp.data;
+    
     return state
 }
 
@@ -92,6 +109,24 @@ pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str)->SignedBe
     return block
 
 }
+
+pub fn get_header(api_key: &str, state_id: &str, endpoint_prefix: &str)->BlockHeaderData{
+    
+    use serde_json::json;
+    let block_body_suffix: String = format!("v1/beacon/headers/{}", &state_id);
+    let endpoint = String::from(endpoint_prefix)+&block_body_suffix;
+    let client = reqwest::blocking::ClientBuilder::new()
+    .timeout(None)
+      .build()
+        .unwrap();
+
+    let req = client.get(endpoint).send().unwrap();
+    let resp: GenericResponse<BlockHeaderData> = req.json().unwrap();
+    let header: BlockHeaderData = resp.data;
+
+    return header
+}
+
 
 
 // pub fn get_next_sync_committee_indices(state: &BeaconState<MainnetEthSpec>){
