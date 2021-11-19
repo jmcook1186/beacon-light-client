@@ -29,13 +29,14 @@ hex = "0.3.1"
 bytes="1.1.0"
 swap_or_not_shuffle = {git = "https://github.com/sigp/lighthouse", branch = "stable" }
 http_api = {git = "https://github.com/sigp/lighthouse", branch = "stable" }
-
+eth2_ssz = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 
 [patch]
 [patch.crates-io]
+eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 tree_hash = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 tree_hash_derive = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 eth2_ssz = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
-eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 eth2_ssz_types = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 

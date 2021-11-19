@@ -3281,6 +3281,8 @@ dependencies = [
  "clap 3.0.0-beta.5",
  "eth2",
  "eth2_hashing 0.2.0 (git+https://github.com/sigp/lighthouse?branch=stable)",
+ "eth2_ssz",
+ "eth2_ssz_types",
  "eventsource-client",
  "futures",
  "hex 0.3.2",

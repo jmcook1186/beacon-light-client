@@ -1,23 +1,86 @@
 use std::format;
 use crate::http_requests;
-use crate::query_node;
-use crate::types::{BeaconBlockHeader,LightClientSnapshot, SyncCommittee, 
-    LightClientStore, LightClientUpdate, BeaconState};
+use std::sync::Arc;
+extern crate hex;
+use eth2::types::*;
+use crate::light_client_types::LightClientSnapshot;
 
 
-pub fn make_snapshot(state: &BeaconState)-> LightClientSnapshot{
+pub fn get_state(api_key: &str, state_id: &str, endpoint_prefix: &str)->BeaconState<MainnetEthSpec>{
 
-    let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
+    let state_suffix: String = format!("v2/debug/beacon/states/{}", &state_id);
+
+    let endpoint = String::from(endpoint_prefix)+&state_suffix;
+    let client = reqwest::blocking::ClientBuilder::new()
+    .timeout(None)
+      .build()
+        .unwrap();
+    let endpoint = String::from(endpoint);
+    let req = client.get(endpoint).send().unwrap();
+    let resp: GenericResponse<BeaconState<MainnetEthSpec>> = req.json().unwrap();
+    let state = resp.data;
+    
+    return state
+}
+
+
+
+
+pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>)-> LightClientSnapshot{
+
+    let header = state.latest_block_header();
+    let current_committee = state.current_sync_committee().unwrap();
+    let next_committee = state.next_sync_committee().unwrap();
+
 
     let snapshot = LightClientSnapshot{
-        header: state.latest_block_header.to_owned(),
-        current_sync_committee: current_sync_committee,
-        next_sync_committee: next_sync_committee,
+        header: header.to_owned(),
+        current_sync_committee: current_committee.clone(),
+        next_sync_committee: next_committee.clone(),
     };
-
 
     return snapshot
 }
+
+
+
+pub fn get_block(api_key: &str, state_id: &str, endpoint_prefix: &str)->SignedBeaconBlock<MainnetEthSpec>{
+
+    use serde_json::json;
+    let block_body_suffix: String = format!("v2/beacon/blocks/{}", &state_id);
+    let endpoint = String::from(endpoint_prefix)+&block_body_suffix;
+    let client = reqwest::blocking::ClientBuilder::new()
+    .timeout(None)
+      .build()
+        .unwrap();
+
+    let req = client.get(endpoint).send().unwrap();
+    let resp: ForkVersionedResponse<SignedBeaconBlock<MainnetEthSpec>> = req.json().unwrap();
+    let block = resp.data;
+    //dbg!(block);
+
+    return block
+
+}
+
+pub fn get_header(api_key: &str, state_id: &str, endpoint_prefix: &str)->BlockHeaderData{
+    
+    use serde_json::json;
+    let block_body_suffix: String = format!("v1/beacon/headers/{}", &state_id);
+    let endpoint = String::from(endpoint_prefix)+&block_body_suffix;
+    let client = reqwest::blocking::ClientBuilder::new()
+    .timeout(None)
+      .build()
+        .unwrap();
+
+    let req = client.get(endpoint).send().unwrap();
+    let resp: GenericResponse<BlockHeaderData> = req.json().unwrap();
+    let header: BlockHeaderData = resp.data;
+
+    return header
+}
+
+
 
 
 // pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
@@ -45,62 +108,6 @@ pub fn make_snapshot(state: &BeaconState)-> LightClientSnapshot{
 // }
 
 
-//pub fn get_update(state: &BeaconState<MainnetEthSpec>, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
 
-
-//     let new_header = state.latest_block_header;
-
-//     let current_header = &current_snapshot.header;
-
-//     // new sync committees from state object
-//     let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
-
-//     // new snapshot from new header and new sync comms
-//     let snapshot = LightClientSnapshot{
-//         header: new_header,
-//         current_sync_committee: current_sync_committee,
-//         next_sync_committee: next_sync_committee,
-//     };
-
-//     // get sync_aggregate from beacon block body
-//     // parse to vector of u8s
-//     let _sync_committee_bits = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_bits"].to_string();
-//     let _trimmed = &_sync_committee_bits.replace("\"", "");
-//     let sync_committee_bits: Vec<u8> = _trimmed.as_bytes().to_vec();
-
-
-//     // THIS IS THE ROOT, BUT WE NEED THE MERKLE BRANCH CONNECTING IT TO BEACON STATE
-//     let _finalized_branch = state["data"]["finalized_checkpoint"]["root"].to_string();
-//     let _trimmed = &_finalized_branch.replace("\"", "");
-//     let finalized_branch: Vec<u8> = _trimmed.as_bytes().to_vec();
-
-
-
-//     // get sync committee signature 
-//     let sync_committee_signature = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_signature"].to_string();
-
-//     // other update vars from state obj
-//     let branch = vec![0,1,2,3,4,5]; //PLACEHOLDER
-//     let finality_header = current_header;
-//     let finality_branch = finalized_branch;//PLACEHOLDER
-//     let sync_committee_bits = sync_committee_bits;
-//     let fork = state["data"]["fork"].to_string();
-//     let sync_pubkeys = &snapshot.next_sync_committee.pubkeys.to_string();
-
-//     // build update obj
-//     let update =  LightClientUpdate{
-//         header: snapshot.header,
-//         next_sync_committee: snapshot.next_sync_committee,
-//         next_sync_committee_branch: branch,
-//         finality_header: finality_header,
-//         finality_branch: finality_branch,
-//         sync_committee_bits: sync_committee_bits,
-//         sync_committee_signature: sync_committee_signature,
-//         fork_version: fork,
-//     };
-
-//     return update
-
-// }
 
 
