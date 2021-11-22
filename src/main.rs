@@ -16,6 +16,13 @@ use ssz_types::{typenum::Unsigned, typenum::U32, BitVector, FixedVector, Bitfiel
 use ethereum_types::H256;
 use eth2_hashing::{hash};
 
+// grab precomputed generalized indices and vec[root] lengths
+// from lodestar
+const NEXT_SYNC_COMMITTEE_INDEX = 55;
+const NEXT_SYNC_COMMITTEE_INDEX_FLOORLOG2 = 55;
+const FINALIZED_ROOT_INDEX = 105;
+const FINALIZED_ROOT_INDEX_FLOOR_LOG2 = 6;
+
 
 fn main(){
     
@@ -40,7 +47,7 @@ fn main(){
 
 
 
-    // merkleize serializes state obj
+    // merkleize serialized state obj
 
     fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8;32] {
         let mut arr = [0u8;32];
@@ -91,6 +98,7 @@ pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<M
 
     return update
 }
+
 
 
 // pub struct LightClientUpdate{
