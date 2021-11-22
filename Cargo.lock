@@ -3283,12 +3283,14 @@ dependencies = [
  "eth2_hashing 0.2.0 (git+https://github.com/sigp/lighthouse?branch=stable)",
  "eth2_ssz",
  "eth2_ssz_types",
+ "ethereum-types 0.12.1",
  "eventsource-client",
  "futures",
  "hex 0.3.2",
  "http_api",
  "libmath",
  "log",
+ "merkle_proof",
  "pretty_env_logger",
  "proto_array",
  "rand 0.8.4",
@@ -3300,6 +3302,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "toml",
+ "tree_hash",
  "warp 0.3.1",
 ]
 

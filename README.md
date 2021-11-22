@@ -16,8 +16,7 @@ Then cargo run in the light-client directory
 
 ## Current Functionality
 
-The light client randomly selects a beacon node to connect to. The server then creates an initial store object by parsing data from the `beacon_block_body` and `beacon_state` objects associated with the most recent finalized block requested from the Beacon Node. Then, the same process is then repeated for the head of the chain, with new data used to update `store`.
-
+The light client randomly selects a Beacon node to connect to from the N nodes spun up as part of a local Lighthouse testnet (N can be set in /lighthouse/scripts/local_testnetvars.env). The server then creates an initial store object by parsing data from the `beacon_block_body` and `beacon_state` objects associated with the most recent finalized block requested from the Beacon Node. Then, the same process is then repeated for the head of the chain, with new data used to update `store`.
 
 ## Dev Notes
 

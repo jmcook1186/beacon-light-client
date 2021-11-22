@@ -6,14 +6,15 @@ pub mod build_objects;
 pub mod light_client_types;
 use crate::light_client_types::{LightClientUpdate, LightClientSnapshot};
 use eth2::types::*;
-use eth2_hashing::{hash};
+use merkle_proof::MerkleTree;
 use std::sync::Arc;
 extern crate hex;
 use swap_or_not_shuffle::compute_shuffled_index;
 use bytes::{BufMut, BytesMut};
 use ssz::{ssz_encode, Decode, DecodeError, Encode};
 use ssz_types::{typenum::Unsigned, typenum::U32, BitVector, FixedVector, Bitfield};
-
+use ethereum_types::H256;
+use eth2_hashing::{hash};
 
 
 fn main(){
@@ -34,10 +35,38 @@ fn main(){
     let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix);
 
     //ssz serialize the state object
-    //let serialized_state = state.as_ssz_bytes();
+    let serialized_state = state.as_ssz_bytes();
+    let chunked = serialized_state.chunks(32);
+
+
+
+    // merkleize serializes state obj
+
+    fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8;32] {
+        let mut arr = [0u8;32];
+        for (place, element) in arr.iter_mut().zip(vector.iter()) {
+            *place = *element;
+        }
+        arr
+    }
+
+
+    let mut leaves: Vec<H256> = vec![];
+    for chunk in chunked{
+        let chunk_vec =chunk.to_vec();
+        let chunk_fixed: [u8; 32] = vector_as_u8_32_array(chunk_vec);
+        let leaf = H256::from(chunk_fixed);
+        leaves.push(leaf);
+    }
+
+    let state_length: f64 = leaves.len() as f64;
+    let tree_depth:usize = state_length.sqrt() as usize;
+
+    println!("{:?}, {:?}",state_length, tree_depth);
+
     
-    // NOW MERKLEIZE IT!!
-    //let state_tree_root = state.canonical_root();    
+    let mut merkle_tree = MerkleTree::create(&leaves, tree_depth);
+
 
     let update = get_update(state, block, finality_header);
 
@@ -55,10 +84,10 @@ pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<M
         next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
         finality_header: finality_header,
         sync_committee_bits: aggregate.sync_committee_bits,
+        fork_version: state.fork().current_version,
 
     };
 
-    println!("{:?}",update.sync_committee_bits);
 
     return update
 }
