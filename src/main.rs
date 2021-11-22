@@ -1,9 +1,10 @@
 use std::format;
 use std::fs;
-mod node_discovery;
-mod http_requests;
-mod build_objects;
-mod light_client_types;
+pub mod node_discovery;
+pub mod http_requests;
+pub mod build_objects;
+pub mod light_client_types;
+use crate::light_client_types::{LightClientUpdate, LightClientSnapshot};
 use eth2::types::*;
 use eth2_hashing::{hash};
 use std::sync::Arc;
@@ -11,7 +12,8 @@ extern crate hex;
 use swap_or_not_shuffle::compute_shuffled_index;
 use bytes::{BufMut, BytesMut};
 use ssz::{ssz_encode, Decode, DecodeError, Encode};
-use ssz_types::{typenum::Unsigned, BitVector, FixedVector};
+use ssz_types::{typenum::Unsigned, typenum::U32, BitVector, FixedVector, Bitfield};
+
 
 
 fn main(){
@@ -28,72 +30,52 @@ fn main(){
     
     // download a beacon block and extract the body
     let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
-    let body = block.message().body();
-    let header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix);
+    //let body = block.message().body();
+    let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix);
 
     //ssz serialize the state object
-    let serialized_state = state.as_ssz_bytes();
-
+    //let serialized_state = state.as_ssz_bytes();
+    
     // NOW MERKLEIZE IT!!
-        
+    //let state_tree_root = state.canonical_root();    
+
+    let update = get_update(state, block, finality_header);
+
 }
 
 
+pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<MainnetEthSpec>, finality_header: BlockHeaderData)->LightClientUpdate{
 
-//pub fn get_update(state: &BeaconState<MainnetEthSpec>, current_snapshot: &LightClientSnapshot, beacon_block_body: &serde_json::Value )->LightClientUpdate{
-
-
-//     let new_header = state.latest_block_header;
-
-//     let current_header = &current_snapshot.header;
-
-//     // new sync committees from state object
-//     let (current_sync_committee, next_sync_committee) = query_node::get_sync_committees(&state);
-
-//     // new snapshot from new header and new sync comms
-//     let snapshot = LightClientSnapshot{
-//         header: new_header,
-//         current_sync_committee: current_sync_committee,
-//         next_sync_committee: next_sync_committee,
-//     };
-
-//     // get sync_aggregate from beacon block body
-//     // parse to vector of u8s
-//     let _sync_committee_bits = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_bits"].to_string();
-//     let _trimmed = &_sync_committee_bits.replace("\"", "");
-//     let sync_committee_bits: Vec<u8> = _trimmed.as_bytes().to_vec();
+    let aggregate: SyncAggregate<MainnetEthSpec> = block.message().body().sync_aggregate().unwrap().to_owned();
 
 
-//     // THIS IS THE ROOT, BUT WE NEED THE MERKLE BRANCH CONNECTING IT TO BEACON STATE
-//     let _finalized_branch = state["data"]["finalized_checkpoint"]["root"].to_string();
-//     let _trimmed = &_finalized_branch.replace("\"", "");
-//     let finalized_branch: Vec<u8> = _trimmed.as_bytes().to_vec();
+    let update = LightClientUpdate{
+
+        header: state.latest_block_header().to_owned(),
+        next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
+        finality_header: finality_header,
+        sync_committee_bits: aggregate.sync_committee_bits,
+
+    };
+
+    println!("{:?}",update.sync_committee_bits);
+
+    return update
+}
 
 
-
-//     // get sync committee signature 
-//     let sync_committee_signature = beacon_block_body["data"]["message"]["body"]["sync_aggregate"]["sync_committee_signature"].to_string();
-
-//     // other update vars from state obj
-//     let branch = vec![0,1,2,3,4,5]; //PLACEHOLDER
-//     let finality_header = current_header;
-//     let finality_branch = finalized_branch;//PLACEHOLDER
-//     let sync_committee_bits = sync_committee_bits;
-//     let fork = state["data"]["fork"].to_string();
-//     let sync_pubkeys = &snapshot.next_sync_committee.pubkeys.to_string();
-
-//     // build update obj
-//     let update =  LightClientUpdate{
-//         header: snapshot.header,
-//         next_sync_committee: snapshot.next_sync_committee,
-//         next_sync_committee_branch: branch,
-//         finality_header: finality_header,
-//         finality_branch: finality_branch,
-//         sync_committee_bits: sync_committee_bits,
-//         sync_committee_signature: sync_committee_signature,
-//         fork_version: fork,
-//     };
-
-//     return update
-
-//}
+// pub struct LightClientUpdate{
+    
+//     header: BeaconBlockHeader  // comes from header struct
+//     // Next sync committee corresponding to the header
+//     next_sync_committee: SyncCommittee  //full syncCommittee struct
+//     //next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)] // vector of bytes32 with length equal to floorlog2(generalizedindex)
+//     // # Finality proof for the update header
+//     finality_header: BeaconBlockHeader  // comes from header struct
+//     //finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]    // vector of bytes32 with length equal to floorlog2(generalizedindex)
+//     // Sync committee aggregate signature
+//     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]   // comes from syncAggregate struct
+//     sync_committee_signature: BLSSignature  // comes from syncAggregate struct
+//     // Fork version for the aggregate signature
+//     fork_version: Version
+// }

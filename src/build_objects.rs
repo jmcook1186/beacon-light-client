@@ -1,6 +1,4 @@
 use std::format;
-use crate::http_requests;
-use std::sync::Arc;
 extern crate hex;
 use eth2::types::*;
 use crate::light_client_types::LightClientSnapshot;
@@ -77,9 +75,9 @@ pub fn get_header(api_key: &str, state_id: &str, endpoint_prefix: &str)->BlockHe
     let resp: GenericResponse<BlockHeaderData> = req.json().unwrap();
     let header: BlockHeaderData = resp.data;
 
+
     return header
 }
-
 
 
 
