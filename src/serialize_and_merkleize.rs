@@ -1,14 +1,8 @@
-use std::format;
-use std::fs;
 use eth2::types::*;
 use merkle_proof::MerkleTree;
-use std::sync::Arc;
 extern crate hex;
-use bytes::{BufMut, BytesMut};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
-use ssz_types::{typenum::Unsigned, typenum::U32, BitVector, FixedVector, Bitfield};
+use ssz::{Encode};
 use ethereum_types::H256;
-use eth2_hashing::{hash};
 
 
 pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>)->Vec<H256>{
@@ -51,15 +45,18 @@ pub fn get_merkle_tree(leaves: &Vec<H256>)-> (MerkleTree, usize){
 
     let tree_depth:usize = ((n_leaves.floor().log2())+1.0) as usize;
 
-    let mut merkle_tree = MerkleTree::create(&leaves, tree_depth);
+    let merkle_tree = MerkleTree::create(&leaves, tree_depth);
     
     return (merkle_tree, tree_depth)
 }
+
 
 pub fn get_branch_indices(leaf_index: usize)->Vec<usize>{
     // function takes leaf index and returns 
     // the indexes for all sibling and parent roots
     // required for a merkle proof for the leaf
+    // NB not actually implemented in main() bc
+    // superseded by Lighthouse's get_proof() func
 
     let mut branch_indices: Vec<usize> = vec![];
 
@@ -100,7 +97,7 @@ pub fn get_branch_indices(leaf_index: usize)->Vec<usize>{
 
     pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize)->Vec<H256>{
 
-        let (leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
+        let (_leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
         println!("{:?}",branch);
 
         return branch

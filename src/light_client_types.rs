@@ -1,6 +1,6 @@
 use eth2::types::*;
 use std::sync::Arc;
-use ssz_types::{typenum::Unsigned, typenum::U512, length::Fixed, BitVector, FixedVector, Bitfield};
+use ssz_types::{typenum::U512, length::Fixed, Bitfield};
 use ethereum_types::H256;
 
 
