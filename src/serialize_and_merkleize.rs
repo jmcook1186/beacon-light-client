@@ -44,64 +44,64 @@ pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>)->Vec<H256>{
         return leaves
 }
 
-pub fn get_merkle_tree(leaves: &Vec<H256>)-> MerkleTree{
+pub fn get_merkle_tree(leaves: &Vec<H256>)-> (MerkleTree, usize){
 
     // // get tree depth and number of leaves to pass to merkle func
     let n_leaves: f64 = leaves.len() as f64;
-    let tree_depth:usize = n_leaves.floor().log2() as usize;
 
-    println!("n leaves: {:?}, tree_depth: {:?}", n_leaves, tree_depth);
     let tree_depth:usize = ((n_leaves.floor().log2())+1.0) as usize;
 
     let mut merkle_tree = MerkleTree::create(&leaves, tree_depth);
     
-    return merkle_tree
+    return (merkle_tree, tree_depth)
 }
 
-pub fn get_branch_indices(leaf_index: u64)->Vec<usize>{
+pub fn get_branch_indices(leaf_index: usize)->Vec<usize>{
     // function takes leaf index and returns 
     // the indexes for all sibling and parent roots
     // required for a merkle proof for the leaf
 
-    let mut branch: Vec<usize> = vec![];
+    let mut branch_indices: Vec<usize> = vec![];
 
     // initialize branch with the leaf
-    branch.push(leaf_index as usize);
+    branch_indices.push(leaf_index as usize);
     
     // while the last item in the list is not the state root
     // sequence of pushes is: leaf, sibling, parent, sibling, parent...
     // i.e. up a lovel, get hash partner, up a level, get hash partner...
-    while branch.last_mut().unwrap().to_owned() as u64 > 1{
+    while branch_indices.last_mut().unwrap().to_owned() as u64 > 1{
         
         // index of the leaf and its left and right neighbours
-        let leaf = branch.last_mut().unwrap().to_owned() as u64;
-        let left = branch.last_mut().unwrap().to_owned() as u64 -1;
-        let right = branch.last_mut().unwrap().to_owned() as u64 +1;
+        let leaf = branch_indices.last_mut().unwrap().to_owned() as u64;
+        let left = branch_indices.last_mut().unwrap().to_owned() as u64 -1;
+        let right = branch_indices.last_mut().unwrap().to_owned() as u64 +1;
         
         // if the index is even we always want its right neighbour 
         // to hash with. If odd, always left neighbour.
-        if branch.last_mut().unwrap().to_owned() as u64 % 2 ==0{
-            branch.push(right as usize)
+        if branch_indices.last_mut().unwrap().to_owned() as u64 % 2 ==0{
+            branch_indices.push(right as usize)
         }
         else{
-            branch.push(left as usize)
+            branch_indices.push(left as usize)
         }
         
         // the parent is always floor of index/2.
-        branch.push(math::round::floor((leaf/2) as f64,0) as usize);
+        branch_indices.push(math::round::floor((leaf/2) as f64,0) as usize);
 
         };
 
-        println!("{:?}",branch);
+        println!("{:?}",branch_indices);
 
-        return branch
+        return branch_indices
     }
 
 
-    pub fn get_branch(tree: MerkleTree, indices: Vec<usize>){
 
-        //let branch = indices.iter().map( |i| tree.Leaf[*i] ).collect::<Vec<_>>();
-        //fs::write("./tree_test.txt",tree.to_string());
-        println!("{:?}",tree[0]);
-        //return branch
+
+    pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize)->Vec<H256>{
+
+        let (leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
+        println!("{:?}",branch);
+
+        return branch
     }

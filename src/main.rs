@@ -42,13 +42,6 @@ fn main(){
     let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
     let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
-    // merklize beacon_state
-    let leaves: Vec<H256> = serialize_and_merkleize::to_h256_chunks(&state);
-    let tree: MerkleTree = serialize_and_merkleize::get_merkle_tree(&leaves);
-
-    let branch_indices = serialize_and_merkleize::get_branch_indices(NEXT_SYNC_COMMITTEE_INDEX); 
-    let branch = serialize_and_merkleize::get_branch(tree, branch_indices);
-
     // build update object
     let update = get_update(state, block, finality_header);
 
@@ -58,13 +51,24 @@ fn main(){
 pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<MainnetEthSpec>, finality_header: BlockHeaderData)->LightClientUpdate{
 
     let aggregate: SyncAggregate<MainnetEthSpec> = block.message().body().sync_aggregate().unwrap().to_owned();
+    
+    // merklize beacon_state
+    let leaves: Vec<H256> = serialize_and_merkleize::to_h256_chunks(&state);
+    let (tree, tree_depth) = serialize_and_merkleize::get_merkle_tree(&leaves);
+
+    //let branch_indices = serialize_and_merkleize::get_branch_indices(NEXT_SYNC_COMMITTEE_INDEX); 
+    let sync_comm_branch: Vec<H256> = serialize_and_merkleize::get_branch(&tree, NEXT_SYNC_COMMITTEE_INDEX as usize, tree_depth as usize);
+
+    let finality_branch: Vec<H256> = serialize_and_merkleize::get_branch(&tree, FINALIZED_ROOT_INDEX as usize, tree_depth as usize);
 
 
     let update = LightClientUpdate{
 
         header: state.latest_block_header().to_owned(),
         next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
+        next_sync_committee_branch: sync_comm_branch,
         finality_header: finality_header,
+        finality_branch: finality_branch,
         sync_committee_bits: aggregate.sync_committee_bits,
         fork_version: state.fork().current_version,
 
@@ -74,20 +78,3 @@ pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<M
     return update
 }
 
-
-
-// pub struct LightClientUpdate{
-    
-//     header: BeaconBlockHeader  // comes from header struct
-//     // Next sync committee corresponding to the header
-//     next_sync_committee: SyncCommittee  //full syncCommittee struct
-//     //next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)] // vector of bytes32 with length equal to floorlog2(generalizedindex)
-//     // # Finality proof for the update header
-//     finality_header: BeaconBlockHeader  // comes from header struct
-//     //finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)]    // vector of bytes32 with length equal to floorlog2(generalizedindex)
-//     // Sync committee aggregate signature
-//     sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]   // comes from syncAggregate struct
-//     sync_committee_signature: BLSSignature  // comes from syncAggregate struct
-//     // Fork version for the aggregate signature
-//     fork_version: Version
-// }

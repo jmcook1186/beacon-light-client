@@ -1,6 +1,7 @@
 use eth2::types::*;
 use std::sync::Arc;
 use ssz_types::{typenum::Unsigned, typenum::U512, length::Fixed, BitVector, FixedVector, Bitfield};
+use ethereum_types::H256;
 
 
 
@@ -19,13 +20,13 @@ pub struct LightClientUpdate{
     pub next_sync_committee: Arc<SyncCommittee<MainnetEthSpec>>,  //full syncCommittee struct
     
     // vector of bytes32 with length equal to floorlog2(generalizedindex)
-    //next_sync_committee_branch: Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_INDEX)], 
+    pub next_sync_committee_branch: Vec<H256>, 
     
     // # Finality proof for the update header
     pub finality_header: BlockHeaderData,  // comes from header struct
     
     // vector of bytes32 with length equal to floorlog2(generalizedindex)
-    //finality_branch: Vector[Bytes32, floorlog2(FINALIZED_ROOT_INDEX)],    
+    pub finality_branch: Vec<H256>,    
     
     // Sync committee aggregate signature
     pub sync_committee_bits: Bitfield<Fixed<U512>>,
