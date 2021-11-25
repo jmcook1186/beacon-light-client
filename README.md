@@ -1,9 +1,8 @@
 # Lighthouse Light Client
 
-*** This light client is still in very early development ***
-It aims to be a functional prototype, but is curently way off even that!
+*** WARNING This light client is still in very early development! ***
 
-The initial aim of this repository is to build a prototype Beacon Chain light client in Rust following the following specs: https://github.com/ethereum/annotated-spec/blob/master/altair/sync-protocol.md#minimal-light-client
+The initial aim of this repository is to build a prototype Beacon Chain light client in Rust following the following specs: https://github.com/ethereum/annotated-spec/blob/master/altair/sync-protocol.md#minimal-light-client. The initial aim is to have a working prototype that tracks finalized blocks, then later expanding the scope to track the head of the chain. 
 
 ## Design
 
@@ -11,8 +10,7 @@ To begin with the light client will follow a server/client model. The relevant i
 
 ## Instructions
 
-First spin up a local testnet using Ganache as the execution layer
-Then cargo run in the light-client directory
+First spin up a local testnet using Ganache as the execution layer (clone lighthouse repo, navigate to lighthouse/scripts/local_testnet, run `./start_local_testnet.sh`). Then cargo run in the beacon-light-client top level directory. At the current stagte of development this will get all the relevant data, serialize and merkleize the beacon state object and print some debugging logs to the console.
 
 ## Current Functionality
 

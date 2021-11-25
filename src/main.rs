@@ -4,6 +4,7 @@ pub mod node_discovery;
 pub mod http_requests;
 pub mod build_objects;
 pub mod light_client_types;
+pub mod serialize_and_merkleize;
 use crate::light_client_types::{LightClientUpdate, LightClientSnapshot};
 use eth2::types::*;
 use merkle_proof::MerkleTree;
@@ -17,9 +18,10 @@ use ethereum_types::H256;
 use eth2_hashing::{hash};
 
 // grab precomputed generalized indices and vec[root] lengths
-// from lodestar
+// from lodestar. floor_log2 gives the length of the list
+// of roots in the branch connecting these leaves to the state tree root
 const NEXT_SYNC_COMMITTEE_INDEX: u64 = 55;
-const NEXT_SYNC_COMMITTEE_INDEX_FLOORLOG2: u64 = 55;
+const NEXT_SYNC_COMMITTEE_INDEX_FLOORLOG2: u64 = 5;
 const FINALIZED_ROOT_INDEX: u64 = 105;
 const FINALIZED_ROOT_INDEX_FLOOR_LOG2: u64 = 6;
 
@@ -38,16 +40,16 @@ fn main(){
     
     // download a beacon block and extract the body
     let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
-    //let body = block.message().body();
-    let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix);
+    let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
-    let leaves: Vec<H256> = chunkify_state_and_to_H256(&state);
+    // merklize beacon_state
+    let leaves: Vec<H256> = serialize_and_merkleize::to_h256_chunks(&state);
+    let tree: MerkleTree = serialize_and_merkleize::get_merkle_tree(&leaves);
 
-    // check content of leaves vec
-    println!("{:?}",leaves[0]);
-    let tree: MerkleTree = get_merkle_tree(&leaves);
-    //println!("{:?}",tree);
+    let branch_indices = serialize_and_merkleize::get_branch_indices(NEXT_SYNC_COMMITTEE_INDEX); 
+    let branch = serialize_and_merkleize::get_branch(tree, branch_indices);
 
+    // build update object
     let update = get_update(state, block, finality_header);
 
 }
@@ -72,52 +74,7 @@ pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<M
     return update
 }
 
-pub fn chunkify_state_and_to_H256(state: &BeaconState<MainnetEthSpec>)->Vec<H256>{
 
-    // small inner func for converting vec<u8> to vecArray<u8>
-    // i.e. make vec length fixed
-    fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8;32] {
-        let mut arr = [0u8;32];
-        for (place, element) in arr.iter_mut().zip(vector.iter()) {
-            *place = *element;
-        }
-        arr
-    }
-
-            
-    //ssz serialize the state object
-    let serialized_state = state.as_ssz_bytes();
-    
-    // each element in serialized_state is a u8, i.e. 1 byte
-    // chunks of 32 elements = 32 bytes as expected for merkleization
-    let chunked = serialized_state.chunks(32);
-    println!("chunked length: {:?}",chunked.len());
-
-    // convert each 32 byte chunk of the serialized object into H256 type
-    // and append each to vec leaves
-    let mut leaves: Vec<H256> = vec![];
-    for chunk in chunked{
-        let chunk_vec = chunk.to_vec();
-        let chunk_fixed: [u8; 32] = vector_as_u8_32_array(chunk_vec);
-        let leaf = H256::from(chunk_fixed);
-        leaves.push(leaf);
-        }
-        return leaves
-}
-
-pub fn get_merkle_tree(leaves: &Vec<H256>)-> MerkleTree{
-
-    // // get tree depth and number of leaves to pass to merkle func
-    let n_leaves: f64 = leaves.len() as f64;
-    let tree_depth:usize = n_leaves.floor().log2() as usize;
-
-    println!("n leaves: {:?}, tree_depth: {:?}", n_leaves, tree_depth);
-    let tree_depth:usize = n_leaves.floor().log2() as usize;
-
-    let mut merkle_tree = MerkleTree::create(&leaves, 49);
-    
-    return merkle_tree
-}
 
 // pub struct LightClientUpdate{
     
