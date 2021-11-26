@@ -11,7 +11,7 @@ pub struct LightClientSnapshot{
     pub next_sync_committee: Arc<eth2::types::SyncCommittee<MainnetEthSpec>>
 }
 
-
+#[derive(Debug, Clone)]
 pub struct LightClientUpdate{
 
     pub header: BeaconBlockHeader,  // comes from header struct
@@ -34,3 +34,23 @@ pub struct LightClientUpdate{
     // Fork version for the aggregate signature
     pub fork_version: [u8; 4],
 }
+
+
+
+pub struct LightClientStore{
+
+    pub snapshot: LightClientSnapshot,
+    pub valid_updates: Vec<LightClientUpdate>,
+
+}
+
+impl LightClientStore{
+    pub fn create(snapshot: LightClientSnapshot)->LightClientStore{
+        LightClientStore{
+        snapshot: snapshot,
+        valid_updates: vec![],
+        }
+    }
+}
+
+

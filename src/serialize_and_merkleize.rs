@@ -87,7 +87,6 @@ pub fn get_branch_indices(leaf_index: usize)->Vec<usize>{
 
         };
 
-        println!("{:?}",branch_indices);
 
         return branch_indices
     }
@@ -98,7 +97,6 @@ pub fn get_branch_indices(leaf_index: usize)->Vec<usize>{
     pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize)->Vec<H256>{
 
         let (_leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
-        println!("{:?}",branch);
 
         return branch
     }

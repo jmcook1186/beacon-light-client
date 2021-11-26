@@ -6,17 +6,8 @@ pub mod build_objects;
 pub mod light_client_types;
 pub mod serialize_and_merkleize;
 pub mod constants;
-use crate::light_client_types::{LightClientUpdate, LightClientSnapshot};
-use eth2::types::*;
-use merkle_proof::MerkleTree;
-use std::sync::Arc;
 extern crate hex;
-use swap_or_not_shuffle::compute_shuffled_index;
-use bytes::{BufMut, BytesMut};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
-use ssz_types::{typenum::Unsigned, typenum::U32, BitVector, FixedVector, Bitfield};
-use ethereum_types::H256;
-use eth2_hashing::{hash};
+use light_client_types::{LightClientStore};
 
 
 fn main(){
@@ -39,6 +30,10 @@ fn main(){
     // serialization, merkleization and branch extraction for beacon_state are in here
     let update = build_objects::get_update(state, block, finality_header);
 
+    let mut store = LightClientStore::create(snapshot);
+    store.valid_updates.push(update);
+
+    println!("{:?}",store.valid_updates[0].finality_branch);
 }
 
 

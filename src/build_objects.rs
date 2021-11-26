@@ -111,29 +111,6 @@ pub fn get_update(state: BeaconState<MainnetEthSpec>, block: SignedBeaconBlock<M
     return update
 }
 
-// pub fn initialize_store(snapshot: LightClientSnapshot)->LightClientStore{
-    
-//     // initialize with empty update vec
-//     let empty_updates: Vec<LightClientUpdate> = vec![];
-
-//     let store = LightClientStore{
-//         snapshot: snapshot,
-//         valid_updates: empty_updates,
-//     };
-
-
-//     return store
-// }
-
-
-// pub fn update_store(mut store: LightClientStore, snapshot: LightClientSnapshot, update: LightClientUpdate)->LightClientStore{
-
-//     // call class method of LightClientStore to add update to vec and refresh snasphot
-//     store.add_update(update);
-//     store.refresh_snapshot(snapshot);
-    
-//     return store
-// }
 
 
 
