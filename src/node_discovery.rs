@@ -7,12 +7,11 @@ use rand::Rng;
 
 // Later when the light client migrates to public networks
 // this will need to become proper node discovery
-pub fn get_random_node_id(n_nodes: i16, base_port: i16) -> (String, i16){
-
+pub fn get_random_node_id(n_nodes: i16, base_port: i16) -> (String, i16) {
     let mut rng = rand::thread_rng();
     let node_number: i16 = rng.gen_range(1..n_nodes);
     let id: i16 = base_port + node_number;
     let node_id = id.to_string();
 
-    return (node_id, node_number)
+    return (node_id, node_number);
 }

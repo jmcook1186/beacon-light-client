@@ -35,6 +35,8 @@ tree_hash = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 merkle_proof = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
 ethereum-types = "0.12.1"
 
+
+
 [patch]
 [patch.crates-io]
 eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse", branch = "stable" }
