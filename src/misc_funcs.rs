@@ -13,6 +13,29 @@
 // use swap_or_not_shuffle::compute_shuffled_index;
 // use bytes::{BufMut, BytesMut};
 
+
+// A STORE OF MISCELLANEOUS FUNCS THAT I WROTE DURING DEV, GOT CHOPPED, BUT MIGHT
+// BE USEFUL AGAIN LATER!
+
+
+
+// pub fn u64_to_u8_32(var: u64) -> Vec<u8> {
+//     let var_bytes = var.to_le_bytes();
+//     let mut var_out: Vec<u8> = vec![];
+//     // for positions 0-25 in count_vec, append zero (left pad vec)
+//     for j in 0..(32 - var_bytes.len()) {
+//         var_out.push(0u8);
+//     }
+//     // now append the 8 bytes of real data to the count vec
+//     for j in var_bytes {
+//         var_out.push(j);
+//     }
+
+//     assert_eq!(var_out.len(), 32);
+
+//     return var_out;
+// }
+
 // pub struct LightClientUpdate(Container):
     
 //     header: BeaconBlockHeader
