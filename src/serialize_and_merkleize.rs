@@ -7,6 +7,10 @@ use std::convert::From;
 use std::mem::size_of_val;
 
 pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
+    
+    // func takes state object as received from api endpoint and serializes it
+    // according to the ssz specs
+
     let genesis_time = state.genesis_time().as_ssz_bytes();
     let genesis_validators_root = state.genesis_validators_root().as_ssz_bytes();
     let slot = state.slot().as_ssz_bytes();
@@ -24,7 +28,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     let eth1_data_dep_root: Vec<u8> = state.eth1_data().deposit_root.as_ssz_bytes();
     let eth1_data_deposit_count: Vec<u8> = state.eth1_data().deposit_count.as_ssz_bytes();
     let eth1_data_block_hash: Vec<u8> = state.eth1_data().block_hash.as_ssz_bytes();
-    let eth1_data_votes = state.eth1_data_votes();
+    let eth1_data_votes = state.eth1_data_votes().as_ssz_bytes();
     let eth1_deposit_index: Vec<u8> = state.eth1_deposit_index().as_ssz_bytes();
     let validators: Vec<u8> = state.validators().as_ssz_bytes();
     let balances: Vec<u8> = state.balances().as_ssz_bytes();
@@ -68,67 +72,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
         .aggregate_pubkey
         .as_ssz_bytes();
 
-    // CHECK ETH1_DATA_VOTES PARSING IS NOT ALREADY HANDLED BY .as_ssz_bytes()
 
-    // eth1_data_votes is a bit complicated. It arrives from the state object as an array
-    // of eth1_data containers, each of which has fields: deposit_root, count, block_hash.
-    // The number of eth1_data containers inside eth1_data_votes will vary by slot.
-    // To serialize this, we need to iterate through the object and append the raw byte
-    // representation of the eth1_data containers to a simple byte array in the right order:
-
-    // Vec[dep_root1, count1, blockhash1, dep_root2, count2, block_hash2, dep_root3, count3, block_hash3...]
-
-    // A further complication is that "count" arrives as a u64 which needs to be cast as a 32 byte type
-    // before serializing. The hashes are already 32 byte types. Here we go...
-
-    // set up vec to hold raw eth1_data_votes data
-    let mut eth1_data_votes_vec: Vec<u8> = vec![];
-
-    // start looping through eth1_data_votes, one iteration per eth1_data container
-    println!(
-        "Iterating over {:?} vals in eth1_data_votes",
-        eth1_data_votes.len()
-    );
-
-    for i in 0..eth1_data_votes.len() {
-        //extract necessary values from  eth1_data object
-        let dep_root: Vec<u8> = eth1_data_votes[i].deposit_root.as_ssz_bytes();
-        let count = eth1_data_votes[i].deposit_count.as_ssz_bytes();
-        let block_hash: Vec<u8> = eth1_data_votes[i].block_hash.as_ssz_bytes();
-
-        // now for each byte in each field, push to eth1_data_votes_vec.
-        // The ordering is critical - 32 bytes from dep_root first then
-        // 32 bytes from count_vec, 32 bytes fromblock_hash
-        for j in dep_root {
-            eth1_data_votes_vec.push(j)
-        }
-
-        for j in count {
-            eth1_data_votes_vec.push(j)
-        }
-
-        for j in block_hash {
-            eth1_data_votes_vec.push(j)
-        }
-    }
-
-    // assert that the length of the serialized dataset is equal to the number of eth1_data containers
-    // multiplied by the sum of the lengths of each of their elements (32 bytes for hashes, 8 bytes for u64)
-    assert_eq!(
-        eth1_data_votes_vec.len(),
-        eth1_data_votes.len() * (32 + 32 + 8)
-    );
-
-    // after loop has finished, eth1_data_votes_vec is the serialized form of eth1_data_votes ready to be merkleized
-    // To avoid mistakes with var naming, we can overwrite eth1_data_votes (vec of containers) with eth1_data_votes_vec
-    // (vec of bytes) and just use var eth1_data_votes from here on.
-    let eth1_data_votes = eth1_data_votes_vec;
-
-    // the following assert _eq returns true which indicates there's 
-    // probably no need to persist my code for encoding eth1_data_votes
-    // and actually I can just use .as_ssz_bytes() on the state.eth1_data_votes 
-    // struct
-    assert_eq!(eth1_data_votes, state.eth1_data_votes().ssz_bytes_len());
 
     // calculate length of fixed parts (required to calculate offsets later)
     // .len() is right for this as all vars have u8 type,
@@ -205,7 +149,9 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     // CALCULATE VARIABLE LENGTH OFFSETS
     // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
     // (see LH ssz/encode.rs encode_length() func for alternative implementation)
-
+    // is trimming the last 4 bytes off the offset ok? could there be a scenario
+    // where the offset is represented in > 4bytes and the trim leads to information loss? 
+    // unlikely - max val in 4bytes is 4,294,967,295. 
     let historical_roots_offset: [u8; 8] = byte_len_fixed_parts.to_le_bytes();
     let historical_roots_offset: Vec<u8> = historical_roots_offset[0..4].to_vec();
 
@@ -271,20 +217,9 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     .to_le_bytes());
     let inactivity_scores_offset: Vec<u8> = inactivity_scores_offset[0..4].to_vec();
 
-    // for i in [
-    //     historical_roots_offset,
-    //     eth1_data_votes_offset,
-    //     validators_offset,
-    //     balances_offset,
-    //     previous_epoch_participation_offset,
-    //     current_epoch_participation_offset,
-    //     inactivity_scores_offset,
-    // ] {
-    //     println!("{:?}", &i);
-    // }
 
     // BUILD SERIALIZED STATE OBJECT
-    // interlave offsets with fixed-length data then
+    // interleave offsets with fixed-length data then
     // append var-length data
 
     // define serialized state object as empty vec
@@ -356,7 +291,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     return serialized_state;
 }
 
-pub fn merkleize_state(serialized_state: Vec<u8>) -> Vec<u8> {
+pub fn merkleize_state(serialized_state: Vec<u8>) {
     // 1) need to know size in bytes of every element in state
     // object so we can retrieve their bytes from the serialized state
 
@@ -381,15 +316,15 @@ pub fn merkleize_state(serialized_state: Vec<u8>) -> Vec<u8> {
     // If so we need to extract branches, meaning hashes of all nodes connecting
     // leaf to root.
 
-    pub fn pack_bytes(buffer: &mut Vec<u8>) {
-        // copied from ssz_rs - makes sure all elements are 32 bytes
-        let data_len = buffer.len();
-        if data_len % BYTES_PER_CHUNK != 0 {
-            let bytes_to_pad = BYTES_PER_CHUNK - data_len % BYTES_PER_CHUNK;
-            let pad = vec![0u8; bytes_to_pad];
-            buffer.extend_from_slice(&pad);
-        }
-    }
+    // pub fn pack_bytes(buffer: &mut Vec<u8>) {
+    //     // copied from ssz_rs - makes sure all elements are 32 bytes
+    //     let data_len = buffer.len();
+    //     if data_len % BYTES_PER_CHUNK != 0 {
+    //         let bytes_to_pad = BYTES_PER_CHUNK - data_len % BYTES_PER_CHUNK;
+    //         let pad = vec![0u8; bytes_to_pad];
+    //         buffer.extend_from_slice(&pad);
+    //     }
+    // }
 }
 
 
