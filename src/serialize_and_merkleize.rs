@@ -6,8 +6,7 @@ use ssz::Encode;
 use std::convert::From;
 use std::mem::size_of_val;
 
-pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
-    
+pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     let genesis_time = state.genesis_time().as_ssz_bytes();
     let genesis_validators_root = state.genesis_validators_root().as_ssz_bytes();
     let slot = state.slot().as_ssz_bytes();
@@ -69,6 +68,8 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         .aggregate_pubkey
         .as_ssz_bytes();
 
+    // CHECK ETH1_DATA_VOTES PARSING IS NOT ALREADY HANDLED BY .as_ssz_bytes()
+
     // eth1_data_votes is a bit complicated. It arrives from the state object as an array
     // of eth1_data containers, each of which has fields: deposit_root, count, block_hash.
     // The number of eth1_data containers inside eth1_data_votes will vary by slot.
@@ -90,7 +91,6 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
     );
 
     for i in 0..eth1_data_votes.len() {
-
         //extract necessary values from  eth1_data object
         let dep_root: Vec<u8> = eth1_data_votes[i].deposit_root.as_ssz_bytes();
         let count = eth1_data_votes[i].deposit_count.as_ssz_bytes();
@@ -119,10 +119,13 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         eth1_data_votes.len() * (32 + 32 + 8)
     );
 
+
     // after loop has finished, eth1_data_votes_vec is the serialized form of eth1_data_votes ready to be merkleized
     // To avoid mistakes with var naming, we can overwrite eth1_data_votes (vec of containers) with eth1_data_votes_vec
     // (vec of bytes) and just use var eth1_data_votes from here on.
     let eth1_data_votes = eth1_data_votes_vec;
+
+    assert_eq!(eth1_data_votes, state.eth1_data_votes().ssz_bytes_len());
 
     // calculate length of fixed parts (required to calculate offsets later)
     // .len() is right for this as all vars have u8 type,
@@ -157,7 +160,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         &slashings,
         &previous_epoch_participation,
         &current_epoch_participation,
-        &justification_bits,
+        &dummy_offset,
         &prev_just_check_epoch,
         &prev_just_check_root,
         &curr_just_check_epoch,
@@ -176,18 +179,36 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
     }
 
     let byte_len_fixed_parts = fixed_parts.len();
-
     println!("length of fixed part = {:?}", byte_len_fixed_parts);
 
+    // quick check that we are actually getting the byte length by calling .len()
+    // on the serialized objects created using .as_ssz_bytes.
+    // compare to LH ssz_byte_len(). Do a fixed + var length
+    // and a container to make sure no flukes.
+    assert_eq!(
+        header_body_root.len(),
+        state.latest_block_header().body_root.ssz_bytes_len()
+    );
+    assert_eq!(randao_mixes.len(), state.randao_mixes().ssz_bytes_len());
+    assert_eq!(
+        eth1_data_votes.len(),
+        state.eth1_data_votes().ssz_bytes_len()
+    );
+    assert_eq!(
+        historical_roots.len(),
+        state.historical_roots().ssz_bytes_len()
+    );
+
     // CALCULATE VARIABLE LENGTH OFFSETS
-    // TODO: MAKE ALL OFFSETS 4 BYTES LONG!!!!
+    // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
+    // (see LH ssz/encode.rs encode_length() func for alternative implementation)
 
     let historical_roots_offset: [u8; 8] = byte_len_fixed_parts.to_le_bytes();
     let historical_roots_offset: Vec<u8> = historical_roots_offset[0..4].to_vec();
 
     // offset starts after historical roots
     let eth1_data_votes_offset: [u8; 8] =
-        ((byte_len_fixed_parts + historical_roots.len()).to_le_bytes());
+        ((byte_len_fixed_parts + historical_roots.ssz_bytes_len()).to_le_bytes());
     let eth1_data_votes_offset: Vec<u8> = eth1_data_votes_offset[0..4].to_vec();
 
     // // offset starts after eth1 data votes
@@ -225,13 +246,25 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         current_epoch_participation_offset[0..4].to_vec();
 
     // // offset starts after previous_epoch
-    let inactivity_scores_offset: [u8; 8] = ((byte_len_fixed_parts
+    let justification_bits_offset: [u8; 8] = ((byte_len_fixed_parts
         + historical_roots.len()
         + eth1_data_votes.len()
         + validators.len()
         + balances.len()
         + previous_epoch_participation.len()
         + current_epoch_participation.len())
+    .to_le_bytes());
+    let justification_bits_offset: Vec<u8> = justification_bits_offset[0..4].to_vec();
+
+    // // offset starts after previous_epoch
+    let inactivity_scores_offset: [u8; 8] = ((byte_len_fixed_parts
+        + historical_roots.len()
+        + eth1_data_votes.len()
+        + validators.len()
+        + balances.len()
+        + previous_epoch_participation.len()
+        + current_epoch_participation.len()
+        + justification_bits.len())
     .to_le_bytes());
     let inactivity_scores_offset: Vec<u8> = inactivity_scores_offset[0..4].to_vec();
 
@@ -247,10 +280,15 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
     //     println!("{:?}", &i);
     // }
 
+    // BUILD SERIALIZED STATE OBJECT
+    // interlave offsets with fixed-length data then
+    // append var-length data
+
     // define serialized state object as empty vec
     let mut serialized_state: Vec<u8> = vec![];
 
-    // add data to serialized state object
+    // add data and offsets sequentially
+    // to empty vec
     for var in [
         genesis_validators_root,
         slot,
@@ -276,7 +314,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         slashings,
         previous_epoch_participation_offset,
         current_epoch_participation_offset,
-        justification_bits,
+        justification_bits_offset,
         prev_just_check_epoch,
         prev_just_check_root,
         curr_just_check_epoch,
@@ -294,6 +332,7 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
         balances,
         previous_epoch_participation,
         current_epoch_participation,
+        justification_bits,
         inactivity_scores,
     ] {
         for i in var {
@@ -308,11 +347,40 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8>{
 
     println!(
         "implied byte length of variable length vars: {:?}",
-        serialized_state.len()-byte_len_fixed_parts
+        serialized_state.len() - byte_len_fixed_parts
     );
+
+
 
     return serialized_state;
 
+}
+
+
+pub fn merkleize_state(serialized_state: Vec<u8>)->{
+    // 1) need to know size in bytes of every element in state
+    // object so we can retrieve their bytes from the serialized state
+    
+    // 2) Need to examine each element to ensure each leaf is exactly 32 bytes
+    // for those leaves that are not 32 bytes long, right pad them
+
+    // 3) There needs to be an even number of leaves to form a tree, so 
+    // where the leaves feeding a root are not even, add a zero vector
+
+    // 4) for containers, hash leaves together sequentially to produce a 
+    // container hash
+
+    // 5) Now the tree should have one 32 byte element for each field in the
+    // state object, so we can start to hash adjacent leaves to form the merkle tree
+    // and veentually compute the state root
+
+    // 6) We should then be able to verify that the serialization and merkleization
+    // was successful by comparing the computed root to the state root in the block header
+
+    // then on to generalized indices - can we verify that the objects in the 
+    // positions defined in our constants file definitely contain the right data? 
+    // If so we need to extract branches, meaning hashes of all nodes connecting 
+    // leaf to root.
 }
 
 
