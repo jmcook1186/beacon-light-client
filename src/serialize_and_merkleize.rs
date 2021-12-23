@@ -119,12 +119,15 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
         eth1_data_votes.len() * (32 + 32 + 8)
     );
 
-
     // after loop has finished, eth1_data_votes_vec is the serialized form of eth1_data_votes ready to be merkleized
     // To avoid mistakes with var naming, we can overwrite eth1_data_votes (vec of containers) with eth1_data_votes_vec
     // (vec of bytes) and just use var eth1_data_votes from here on.
     let eth1_data_votes = eth1_data_votes_vec;
 
+    // the following assert _eq returns true which indicates there's 
+    // probably no need to persist my code for encoding eth1_data_votes
+    // and actually I can just use .as_ssz_bytes() on the state.eth1_data_votes 
+    // struct
     assert_eq!(eth1_data_votes, state.eth1_data_votes().ssz_bytes_len());
 
     // calculate length of fixed parts (required to calculate offsets later)
@@ -350,24 +353,20 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
         serialized_state.len() - byte_len_fixed_parts
     );
 
-
-
     return serialized_state;
-
 }
 
-
-pub fn merkleize_state(serialized_state: Vec<u8>)->{
+pub fn merkleize_state(serialized_state: Vec<u8>) -> Vec<u8> {
     // 1) need to know size in bytes of every element in state
     // object so we can retrieve their bytes from the serialized state
-    
+
     // 2) Need to examine each element to ensure each leaf is exactly 32 bytes
     // for those leaves that are not 32 bytes long, right pad them
 
-    // 3) There needs to be an even number of leaves to form a tree, so 
+    // 3) There needs to be an even number of leaves to form a tree, so
     // where the leaves feeding a root are not even, add a zero vector
 
-    // 4) for containers, hash leaves together sequentially to produce a 
+    // 4) for containers, hash leaves together sequentially to produce a
     // container hash
 
     // 5) Now the tree should have one 32 byte element for each field in the
@@ -377,11 +376,23 @@ pub fn merkleize_state(serialized_state: Vec<u8>)->{
     // 6) We should then be able to verify that the serialization and merkleization
     // was successful by comparing the computed root to the state root in the block header
 
-    // then on to generalized indices - can we verify that the objects in the 
-    // positions defined in our constants file definitely contain the right data? 
-    // If so we need to extract branches, meaning hashes of all nodes connecting 
+    // then on to generalized indices - can we verify that the objects in the
+    // positions defined in our constants file definitely contain the right data?
+    // If so we need to extract branches, meaning hashes of all nodes connecting
     // leaf to root.
+
+    pub fn pack_bytes(buffer: &mut Vec<u8>) {
+        // copied from ssz_rs - makes sure all elements are 32 bytes
+        let data_len = buffer.len();
+        if data_len % BYTES_PER_CHUNK != 0 {
+            let bytes_to_pad = BYTES_PER_CHUNK - data_len % BYTES_PER_CHUNK;
+            let pad = vec![0u8; bytes_to_pad];
+            buffer.extend_from_slice(&pad);
+        }
+    }
 }
+
+
 
 
 
