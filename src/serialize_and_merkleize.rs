@@ -5,74 +5,148 @@ use ethereum_types::H256;
 use ssz::Encode;
 use std::convert::From;
 use std::mem::size_of_val;
+use std::collections::HashMap;
 
-pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
-    
+pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> (Vec<u8>, HashMap<&str, usize>) {
     // func takes state object as received from api endpoint and serializes it
     // according to the ssz specs
 
+    // make hashmap of var lengths to pass to merklize
+    let mut sizes = HashMap::new();
+    
     let genesis_time = state.genesis_time().as_ssz_bytes();
+    sizes.insert("genesis_time", genesis_time.ssz_bytes_len());   
+
     let genesis_validators_root = state.genesis_validators_root().as_ssz_bytes();
+    sizes.insert("genesis_validators_root", genesis_validators_root.ssz_bytes_len());
+
     let slot = state.slot().as_ssz_bytes();
+    sizes.insert("slot", slot.ssz_bytes_len());
+
     let fork_prev_ver: Vec<u8> = state.fork().previous_version.as_ssz_bytes();
+    sizes.insert("fork_prev_ver", fork_prev_ver.ssz_bytes_len());
+
     let fork_curr_ver: Vec<u8> = state.fork().current_version.as_ssz_bytes();
+    sizes.insert("fork_curr_ver", fork_curr_ver.ssz_bytes_len());
+
     let fork_epoch: Vec<u8> = state.fork().epoch.as_ssz_bytes();
+    sizes.insert("fork_epoch", fork_epoch.ssz_bytes_len());
+
     let header_slot: Vec<u8> = state.latest_block_header().slot.as_ssz_bytes();
+    sizes.insert("header_slot", header_slot.ssz_bytes_len());
+
     let header_proposer_index: Vec<u8> = state.latest_block_header().proposer_index.as_ssz_bytes();
+    sizes.insert("header_proposer_index", header_proposer_index.ssz_bytes_len());
+
     let header_parent_root: Vec<u8> = state.latest_block_header().parent_root.as_ssz_bytes();
+    sizes.insert("header_parent_root", header_parent_root.ssz_bytes_len());
+
     let header_state_root: Vec<u8> = state.latest_block_header().state_root.as_ssz_bytes();
+    sizes.insert("header_state_root", header_state_root.ssz_bytes_len());
+
     let header_body_root: Vec<u8> = state.latest_block_header().body_root.as_ssz_bytes();
+    sizes.insert("header_body_root", header_body_root.ssz_bytes_len());
+
     let block_roots: Vec<u8> = state.block_roots().as_ssz_bytes();
+    sizes.insert("block_roots", block_roots.ssz_bytes_len());
+
     let state_roots: Vec<u8> = state.state_roots().as_ssz_bytes();
+    sizes.insert("state_roots", state_roots.ssz_bytes_len());
+
     let historical_roots: Vec<u8> = state.historical_roots().as_ssz_bytes();
+    sizes.insert("historical_roots", historical_roots.ssz_bytes_len());
+
     let eth1_data_dep_root: Vec<u8> = state.eth1_data().deposit_root.as_ssz_bytes();
+    sizes.insert("eth1_data_dep_root", eth1_data_dep_root.ssz_bytes_len());
+
     let eth1_data_deposit_count: Vec<u8> = state.eth1_data().deposit_count.as_ssz_bytes();
+    sizes.insert("eth1_data_deposit_count", eth1_data_deposit_count.ssz_bytes_len());
+
     let eth1_data_block_hash: Vec<u8> = state.eth1_data().block_hash.as_ssz_bytes();
+    sizes.insert("eth1_data_block_hash", eth1_data_block_hash.ssz_bytes_len());
+
     let eth1_data_votes = state.eth1_data_votes().as_ssz_bytes();
+    sizes.insert("eth1_data_votes", eth1_data_votes.ssz_bytes_len());
+
     let eth1_deposit_index: Vec<u8> = state.eth1_deposit_index().as_ssz_bytes();
+    sizes.insert("eth1_deposit_index", eth1_deposit_index.ssz_bytes_len());
+
     let validators: Vec<u8> = state.validators().as_ssz_bytes();
+    sizes.insert("validators", validators.ssz_bytes_len());
+
     let balances: Vec<u8> = state.balances().as_ssz_bytes();
+    sizes.insert("balances", balances.ssz_bytes_len());
+
     let randao_mixes: Vec<u8> = state.randao_mixes().as_ssz_bytes();
+    sizes.insert("randao_mixes", randao_mixes.ssz_bytes_len());
+
     let slashings: Vec<u8> = state.slashings().as_ssz_bytes();
+    sizes.insert("slashings", slashings.ssz_bytes_len());
+
     let previous_epoch_participation: Vec<u8> =
         state.previous_epoch_participation().unwrap().as_ssz_bytes();
+    sizes.insert("previous_epoch_participation", previous_epoch_participation.ssz_bytes_len());
+
     let current_epoch_participation: Vec<u8> =
         state.current_epoch_participation().unwrap().as_ssz_bytes();
+    sizes.insert("current_epoch_participation", current_epoch_participation.ssz_bytes_len());
+
     let justification_bits: Vec<u8> = state.justification_bits().as_ssz_bytes();
+    sizes.insert("justification_bits", justification_bits.ssz_bytes_len());
+
     let prev_just_check_epoch: Vec<u8> = state
         .previous_justified_checkpoint()
         .epoch
         .as_u64()
         .as_ssz_bytes();
+    sizes.insert("prev_just_check_epoch", prev_just_check_epoch.ssz_bytes_len());
+
     let prev_just_check_root: Vec<u8> = state.previous_justified_checkpoint().root.as_ssz_bytes();
+    sizes.insert("prev_just_check_root", prev_just_check_root.ssz_bytes_len());
+
     let curr_just_check_epoch: Vec<u8> = state
         .current_justified_checkpoint()
         .epoch
         .as_u64()
         .as_ssz_bytes();
+    sizes.insert("curr_just_check_epoch", curr_just_check_epoch.ssz_bytes_len());
+
     let curr_just_check_root: Vec<u8> = state.current_justified_checkpoint().root.as_ssz_bytes();
+    sizes.insert("curr_just_check_root", curr_just_check_root.ssz_bytes_len());
+
     let finalized_check_epoch: Vec<u8> = state.finalized_checkpoint().epoch.as_ssz_bytes();
+    sizes.insert("finalized_check_epoch", finalized_check_epoch.ssz_bytes_len());
+
     let finalized_checkpoint_root: Vec<u8> = state.finalized_checkpoint().root.as_ssz_bytes();
+    sizes.insert("finalized_checkpoint_root", finalized_checkpoint_root.ssz_bytes_len());
+
     let inactivity_scores: Vec<u8> = state.inactivity_scores().unwrap().as_ssz_bytes();
+    sizes.insert("inactivity_scores", inactivity_scores.ssz_bytes_len());
+
     let curr_sync_comm_pubkeys: &Vec<u8> = &state
         .current_sync_committee()
         .unwrap()
         .pubkeys
         .as_ssz_bytes();
+    sizes.insert("curr_sync_comm_pubkeys", curr_sync_comm_pubkeys.ssz_bytes_len());
+
     let curr_sync_comm_agg_pubkey: &Vec<u8> = &state
         .current_sync_committee()
         .unwrap()
         .aggregate_pubkey
         .as_ssz_bytes();
+    sizes.insert("curr_sync_comm_agg_pubkey", curr_sync_comm_agg_pubkey.ssz_bytes_len());
+
     let next_sync_comm_pubkeys: &Vec<u8> =
         &state.next_sync_committee().unwrap().pubkeys.as_ssz_bytes();
+    sizes.insert("next_sync_comm_pubkeys", next_sync_comm_pubkeys.ssz_bytes_len());
+
     let next_sync_comm_agg_pubkey: &Vec<u8> = &state
         .next_sync_committee()
         .unwrap()
         .aggregate_pubkey
         .as_ssz_bytes();
-
-
+    sizes.insert("next_sync_comm_agg_pubkey", next_sync_comm_agg_pubkey.ssz_bytes_len());
 
     // calculate length of fixed parts (required to calculate offsets later)
     // .len() is right for this as all vars have u8 type,
@@ -126,32 +200,16 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
     }
 
     let byte_len_fixed_parts = fixed_parts.len();
+    sizes.insert("fixed_parts", byte_len_fixed_parts);
     println!("length of fixed part = {:?}", byte_len_fixed_parts);
 
-    // quick check that we are actually getting the byte length by calling .len()
-    // on the serialized objects created using .as_ssz_bytes.
-    // compare to LH ssz_byte_len(). Do a fixed + var length
-    // and a container to make sure no flukes.
-    assert_eq!(
-        header_body_root.len(),
-        state.latest_block_header().body_root.ssz_bytes_len()
-    );
-    assert_eq!(randao_mixes.len(), state.randao_mixes().ssz_bytes_len());
-    assert_eq!(
-        eth1_data_votes.len(),
-        state.eth1_data_votes().ssz_bytes_len()
-    );
-    assert_eq!(
-        historical_roots.len(),
-        state.historical_roots().ssz_bytes_len()
-    );
 
     // CALCULATE VARIABLE LENGTH OFFSETS
     // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
     // (see LH ssz/encode.rs encode_length() func for alternative implementation)
     // is trimming the last 4 bytes off the offset ok? could there be a scenario
-    // where the offset is represented in > 4bytes and the trim leads to information loss? 
-    // unlikely - max val in 4bytes is 4,294,967,295. 
+    // where the offset is represented in > 4bytes and the trim leads to information loss?
+    // unlikely - max val in 4bytes is 4,294,967,295.
     let historical_roots_offset: [u8; 8] = byte_len_fixed_parts.to_le_bytes();
     let historical_roots_offset: Vec<u8> = historical_roots_offset[0..4].to_vec();
 
@@ -216,7 +274,6 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
         + justification_bits.len())
     .to_le_bytes());
     let inactivity_scores_offset: Vec<u8> = inactivity_scores_offset[0..4].to_vec();
-
 
     // BUILD SERIALIZED STATE OBJECT
     // interleave offsets with fixed-length data then
@@ -288,12 +345,21 @@ pub fn serialize_beacon_state(state: &BeaconState<MainnetEthSpec>) -> Vec<u8> {
         serialized_state.len() - byte_len_fixed_parts
     );
 
-    return serialized_state;
+
+    for (key, value) in sizes.iter(){
+        println!("{:?}: {:?}", key, value);
+    }
+
+    return (serialized_state, sizes);
 }
 
+
 pub fn merkleize_state(serialized_state: Vec<u8>) {
+
     // 1) need to know size in bytes of every element in state
     // object so we can retrieve their bytes from the serialized state
+    // CONSIDER returning a hashmap of vars: lengths from the serialization func
+    // instead of recalculating here?
 
     // 2) Need to examine each element to ensure each leaf is exactly 32 bytes
     // for those leaves that are not 32 bytes long, right pad them
@@ -326,11 +392,6 @@ pub fn merkleize_state(serialized_state: Vec<u8>) {
     //     }
     // }
 }
-
-
-
-
-
 
 pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
     // small inner func for converting vec<u8> to vecArray<u8>
