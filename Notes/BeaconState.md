@@ -39,7 +39,7 @@ randao_mixes                 | FixedVector<Hash256, T::EpochsPerHistoricalVector
 slashings                    | FixedVector<u64, T::EpochsPerSlashingsVector>                    | Fixed      
 previous_epoch_participation | VariableList<ParticipationFlags, T::ValidatorRegistryLimit>      | Variable
 current_epoch_participation  | VariableList<ParticipationFlags, T::ValidatorRegistryLimit>      | Variable
-justification_bits           | BitVector<T::JustificationBitsLength>                            | Fixed
+justification_bits           | BitVector<T::JustificationBitsLength>                            | Fixed  // SHOULD BE VARIABLE??
 previous_justified_checkpoint| Checkpoint                                                       | Fixed 
   |- epoch                   | Epoch (wraps u64)                                                | Fixed
   |- root                    | Hash256                                                          | Fixed

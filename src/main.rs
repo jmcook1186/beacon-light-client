@@ -31,8 +31,8 @@ fn main() {
     let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
     let (serialized_state, sizes) = serialize_and_merkleize::serialize_beacon_state(&state);
+    serialize_and_merkleize::merkleize_state(&serialized_state, &sizes);
 
-    
     // build update object
     //serialization, merkleization and branch extraction for beacon_state are in here
     //let update = build_objects::get_update(state, block, finality_header);
