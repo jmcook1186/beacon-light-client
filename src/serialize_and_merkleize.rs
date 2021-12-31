@@ -1,7 +1,7 @@
 use eth2::types::*;
 use merkle_proof::MerkleTree;
 extern crate hex;
-use ethereum_types::H256;
+use ethereum_types::{H256};
 use ssz::Encode;
 use std::collections::HashMap;
 use std::convert::From;
@@ -433,6 +433,17 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     //     }
     // }
 
+    
+    let mut leaves = vec![];
+
+    pub fn hash(leaf: &Vec<u8>)-> String{
+        
+        let mut hasher = Sha256::new();
+        hasher.update(leaf);
+        let result = hasher.finalize_reset();
+        return hex::encode(result);
+    }
+    
     let genesis_time = &serialized_state[0..sizes["genesis_time"]];
     let n_pad = 32 - sizes["genesis_time"];
     let pad = vec![0u8; n_pad];
@@ -441,15 +452,15 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         genesis_time_leaf.push(*i);
     }
     genesis_time_leaf.extend_from_slice(&pad);
-    println!(
-        "{:?} ..... {:?}",
-        genesis_time_leaf,
-        genesis_time_leaf.len()
-    );
+    let leaf_hash = hash(&genesis_time_leaf);
+    leaves.push(leaf_hash);
 
-    let genesis_validators_root_leaf = &serialized_state[8..40];
 
-    println!("{:?}", genesis_validators_root_leaf.len());
+
+    let genesis_validators_root_leaf = &serialized_state[8..40].to_vec();
+    let leaf_hash = hash(&genesis_validators_root_leaf);
+    leaves.push(leaf_hash);
+
 
     let slot = &serialized_state[40..48];
     let n_pad= 32 - sizes["slot"];
@@ -459,25 +470,25 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         slot_leaf.push(*i);
     }
     slot_leaf.extend_from_slice(&pad);
-    println!(
-        "{:?} ..... {:?}",
-        slot_leaf,
-        slot_leaf.len()
-    );
 
 
-    /// HASHER
-    /// //////
-    /// len() of sha256 hash is 64. 64 hex chars = 64*4 = 256 bits. 256/8 = 32 bytes
-    /// // so a len = 64 sha256 hash is a 32 byte object
+    for i in leaves.iter(){
+        println!("{:?}",i);
+    }
+
+
+
+    // HASHER
+    // //////
+    // len() of sha256 hash is 64. 64 hex chars = 64*4 = 256 bits. 256/8 = 32 bytes
+    //so a len = 64 sha256 hash is a 32 byte object
     
     // create a Sha256 object
-    let mut hasher = Sha256::new();
-    hasher.update(&genesis_time_leaf);
-    // read hash digest and consume hasher
-    let result = hasher.finalize();
+    // let mut hasher = Sha256::new();
+    // hasher.update(&genesis_time_leaf);
+    // // read hash digest and consume hasher
+    // let result = hasher.finalize();
 
-    println!("HASH: {:?}", hex::encode(result));
 
 }
 
