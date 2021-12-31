@@ -1,12 +1,12 @@
 use eth2::types::*;
 use merkle_proof::MerkleTree;
 extern crate hex;
-use ethereum_types::{H256};
+use ethereum_types::H256;
+use sha2::{Digest, Sha256};
 use ssz::Encode;
 use std::collections::HashMap;
 use std::convert::From;
 use std::mem::size_of_val;
-use sha2::{Sha256, Digest};
 
 pub fn serialize_beacon_state(
     state: &BeaconState<MainnetEthSpec>,
@@ -389,7 +389,6 @@ pub fn serialize_beacon_state(
         println!("{:?}: {:?}", key, value);
     }
 
-
     return (serialized_state, sizes);
 }
 
@@ -433,18 +432,18 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     //     }
     // }
 
-    
     let mut leaves = vec![];
 
-    pub fn hash(leaf: &Vec<u8>)-> String{
-        
+    pub fn hash(leaf: &Vec<u8>) -> String {
         let mut hasher = Sha256::new();
         hasher.update(leaf);
         let result = hasher.finalize_reset();
         return hex::encode(result);
     }
-    
-    let genesis_time = &serialized_state[0..sizes["genesis_time"]];
+
+    let mut start_idx: usize = 0;
+    let genesis_time = &serialized_state[start_idx..sizes["genesis_time"] as usize];
+    start_idx += sizes["genesis_time"] as usize;
     let n_pad = 32 - sizes["genesis_time"];
     let pad = vec![0u8; n_pad];
     let mut genesis_time_leaf: Vec<u8> = vec![];
@@ -455,15 +454,16 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let leaf_hash = hash(&genesis_time_leaf);
     leaves.push(leaf_hash);
 
-
-
-    let genesis_validators_root_leaf = &serialized_state[8..40].to_vec();
+    let genesis_validators_root_leaf = &serialized_state
+        [start_idx..start_idx + sizes["genesis_validators_root"] as usize]
+        .to_vec();
+    start_idx += sizes["genesis_validators_root"] as usize;
     let leaf_hash = hash(&genesis_validators_root_leaf);
     leaves.push(leaf_hash);
 
-
-    let slot = &serialized_state[40..48];
-    let n_pad= 32 - sizes["slot"];
+    let slot = &serialized_state[start_idx..start_idx + sizes["slot"] as usize];
+    start_idx += sizes["slot"] as usize;
+    let n_pad = 32 - sizes["slot"];
     let pad = vec![0u8; n_pad];
     let mut slot_leaf: Vec<u8> = vec![];
     for i in slot {
@@ -471,25 +471,20 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     }
     slot_leaf.extend_from_slice(&pad);
 
-
-    for i in leaves.iter(){
-        println!("{:?}",i);
+    for i in leaves.iter() {
+        println!("{:?}", i);
     }
-
-
 
     // HASHER
     // //////
     // len() of sha256 hash is 64. 64 hex chars = 64*4 = 256 bits. 256/8 = 32 bytes
     //so a len = 64 sha256 hash is a 32 byte object
-    
+
     // create a Sha256 object
     // let mut hasher = Sha256::new();
     // hasher.update(&genesis_time_leaf);
     // // read hash digest and consume hasher
     // let result = hasher.finalize();
-
-
 }
 
 pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
