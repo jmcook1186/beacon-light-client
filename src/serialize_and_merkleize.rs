@@ -393,6 +393,7 @@ pub fn serialize_beacon_state(
 }
 
 pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>) {
+    
     // takes vec<u8> of bytes - this is the actual serialized data
     // also takes Hashmap of <str, usize> - this is the byte length
     // of each field (actual length not offset for variable length fields)
@@ -422,18 +423,10 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     // If so we need to extract branches, meaning hashes of all nodes connecting
     // leaf to root.
 
-    // pub fn pack_bytes(buffer: &mut Vec<u8>) {
-    //     // copied from ssz_rs - makes sure all elements are 32 bytes
-    //     let data_len = buffer.len();
-    //     if data_len % BYTES_PER_CHUNK != 0 {
-    //         let bytes_to_pad = BYTES_PER_CHUNK - data_len % BYTES_PER_CHUNK;
-    //         let pad = vec![0u8; bytes_to_pad];
-    //         buffer.extend_from_slice(&pad);
-    //     }
-    // }
 
     let mut leaves = vec![];
-
+    let mut start_idx: usize = 0;
+    
     pub fn hash(leaf: &Vec<u8>) -> String {
         let mut hasher = Sha256::new();
         hasher.update(leaf);
@@ -441,36 +434,139 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         return hex::encode(result);
     }
 
-    let mut start_idx: usize = 0;
-    let genesis_time = &serialized_state[start_idx..sizes["genesis_time"] as usize];
-    start_idx += sizes["genesis_time"] as usize;
-    let n_pad = 32 - sizes["genesis_time"];
-    let pad = vec![0u8; n_pad];
-    let mut genesis_time_leaf: Vec<u8> = vec![];
-    for i in genesis_time {
-        genesis_time_leaf.push(*i);
+    pub fn pad_to_32_bytes(start: usize, length: usize, serialized_state: &Vec<u8>, sizes: &HashMap<&str,usize>)->Vec<u8>{
+
+        // start and stop idxs for vars in ssz serialized object
+        let stop = start + length;
+        let var_as_bytes = &serialized_state[start..stop];
+
+        if length == 32{
+            assert_eq!(var_as_bytes.len(), 32);
+            return var_as_bytes.to_vec();
+        }
+
+        else if length < 32{
+            let mut padded_var: Vec<u8> = vec![];
+            let n_pad = 32 - length;
+            let pad = vec![0u8; n_pad];
+            
+            for i in var_as_bytes.iter() {
+                padded_var.push(*i);
+            }
+            padded_var.extend_from_slice(&pad);
+
+            assert_eq!(padded_var.len(), 32);
+
+            return padded_var
+        }
+
+        else {
+            
+            if length%32 ==0{
+                // if there are already equal number of chunks
+                if (length/32 %2) ==0{
+                    assert_eq!(length/32 %2, 0);
+                    assert_eq!(length%32, 0);
+                    return var_as_bytes.to_vec();
+                }
+                // if there is odd number of chunks add 32 0s
+                else{
+                    let mut padded_var: Vec<u8> = vec![];
+                    let pad = vec![0u8; 32];
+                    for i in var_as_bytes.iter() {
+                        padded_var.push(*i);
+                    }
+                    padded_var.extend_from_slice(&pad);
+                    
+                    assert_eq!(length/32 %2, 0);
+                    assert_eq!(length%32, 0);
+                    return padded_var
+                }
+            }
+
+            else{
+                return var_as_bytes.to_vec();
+                // pad up to nearest multiple of 32
+                // then ensure even number of chunks
+                // will need another func to hash the chunks
+            }
+
+        }
+        
+        
     }
-    genesis_time_leaf.extend_from_slice(&pad);
-    let leaf_hash = hash(&genesis_time_leaf);
+
+
+    // APPLY PAD AND HASH FUNCS TO EACH VAR
+    let genesis_time = pad_to_32_bytes(start_idx, sizes["genesis_time"], &serialized_state, sizes);
+    start_idx+=sizes["genesis_time"] as usize;
+    let leaf_hash = hash(&genesis_time);
     leaves.push(leaf_hash);
 
-    let genesis_validators_root_leaf = &serialized_state
-        [start_idx..start_idx + sizes["genesis_validators_root"] as usize]
-        .to_vec();
-    start_idx += sizes["genesis_validators_root"] as usize;
-    let leaf_hash = hash(&genesis_validators_root_leaf);
+    let genesis_validators_root = pad_to_32_bytes(start_idx, sizes["genesis_validators_root"], &serialized_state, sizes);
+    start_idx+=sizes["genesis_validators_root"] as usize;
+    let leaf_hash = hash(&genesis_validators_root);
     leaves.push(leaf_hash);
 
-    let slot = &serialized_state[start_idx..start_idx + sizes["slot"] as usize];
-    start_idx += sizes["slot"] as usize;
-    let n_pad = 32 - sizes["slot"];
-    let pad = vec![0u8; n_pad];
-    let mut slot_leaf: Vec<u8> = vec![];
-    for i in slot {
-        slot_leaf.push(*i);
-    }
-    slot_leaf.extend_from_slice(&pad);
+    let slot = pad_to_32_bytes(start_idx, sizes["slot"], &serialized_state, sizes);
+    start_idx+=sizes["slot"] as usize;
+    let leaf_hash = hash(&slot);
+    leaves.push(leaf_hash);
 
+    let fork_prev_ver = pad_to_32_bytes(start_idx, sizes["fork_prev_ver"], &serialized_state, sizes);
+    start_idx+=sizes["fork_prev_ver"] as usize;
+    let leaf_hash = hash(&fork_prev_ver);
+    leaves.push(leaf_hash);
+
+    let fork_curr_ver = pad_to_32_bytes(start_idx, sizes["fork_curr_ver"], &serialized_state, sizes);
+    start_idx+=sizes["fork_curr_ver"] as usize;
+    let leaf_hash = hash(&fork_curr_ver);
+    leaves.push(leaf_hash);
+
+    let fork_epoch = pad_to_32_bytes(start_idx, sizes["fork_epoch"], &serialized_state, sizes);
+    start_idx+=sizes["fork_epoch"] as usize;
+    let leaf_hash = hash(&fork_epoch);
+    leaves.push(leaf_hash);
+
+    let header_slot = pad_to_32_bytes(start_idx, sizes["header_slot"], &serialized_state, sizes);
+    start_idx+=sizes["header_slot"] as usize;
+    let leaf_hash = hash(&header_slot);
+    leaves.push(leaf_hash);
+
+    let header_proposer_index = pad_to_32_bytes(start_idx, sizes["header_proposer_index"], &serialized_state, sizes);
+    start_idx+=sizes["header_proposer_index"] as usize;
+    let leaf_hash = hash(&header_proposer_index);
+    leaves.push(leaf_hash);
+
+    let header_parent_root = pad_to_32_bytes(start_idx, sizes["header_parent_root"], &serialized_state, sizes);
+    start_idx+=sizes["header_parent_root"] as usize;
+    let leaf_hash = hash(&header_parent_root);
+    leaves.push(leaf_hash);
+
+    let header_state_root = pad_to_32_bytes(start_idx, sizes["header_state_root"], &serialized_state, sizes);
+    start_idx+=sizes["header_state_root"] as usize;
+    let leaf_hash = hash(&header_state_root);
+    leaves.push(leaf_hash);
+
+    let header_body_root = pad_to_32_bytes(start_idx, sizes["header_body_root"], &serialized_state, sizes);
+    start_idx+=sizes["header_body_root"] as usize;
+    let leaf_hash = hash(&header_body_root);
+    leaves.push(leaf_hash);
+
+    let block_roots = pad_to_32_bytes(start_idx, sizes["block_roots"], &serialized_state, sizes);
+    start_idx+=sizes["block_roots"] as usize;
+    let leaf_hash = hash(&block_roots);
+    leaves.push(leaf_hash);
+
+    let state_roots = pad_to_32_bytes(start_idx, sizes["state_roots"], &serialized_state, sizes);
+    start_idx+=sizes["state_roots"] as usize;
+    let leaf_hash = hash(&state_roots);
+    leaves.push(leaf_hash);
+
+
+
+
+    
     for i in leaves.iter() {
         println!("{:?}", i);
     }
