@@ -428,18 +428,21 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let mut start_idx: usize = 0;
     
     pub fn hash(leaf: &Vec<u8>) -> String {
+        //TODO: DEAL WITH VEC OF >1 CHUNK
         let mut hasher = Sha256::new();
         hasher.update(leaf);
         let result = hasher.finalize_reset();
         return hex::encode(result);
     }
 
-    pub fn pad_to_32_bytes(start: usize, length: usize, serialized_state: &Vec<u8>, sizes: &HashMap<&str,usize>)->Vec<u8>{
+    pub fn pad_to_32_bytes(start: usize, length: usize, 
+        serialized_state: &Vec<u8>, sizes: &HashMap<&str,usize>)->Vec<u8>{
 
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
         let var_as_bytes = &serialized_state[start..stop];
 
+        // if there are exactly 32 bytes in var
         if length == 32{
             assert_eq!(var_as_bytes.len(), 32);
             return var_as_bytes.to_vec();
@@ -460,16 +463,19 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
             return padded_var
         }
 
+        // else if there are more than 32 bytes in var
         else {
             
             if length%32 ==0{
+                
                 // if there are already equal number of chunks
                 if (length/32 %2) ==0{
                     assert_eq!(length/32 %2, 0);
                     assert_eq!(length%32, 0);
                     return var_as_bytes.to_vec();
                 }
-                // if there is odd number of chunks add 32 0s
+                
+                // if there is odd number of chunks add [0u8; 32]
                 else{
                     let mut padded_var: Vec<u8> = vec![];
                     let pad = vec![0u8; 32];
@@ -486,6 +492,7 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
 
             else{
                 return var_as_bytes.to_vec();
+                // TODO
                 // pad up to nearest multiple of 32
                 // then ensure even number of chunks
                 // will need another func to hash the chunks
@@ -564,24 +571,17 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     leaves.push(leaf_hash);
 
 
-
-
     
     for i in leaves.iter() {
         println!("{:?}", i);
     }
 
-    // HASHER
-    // //////
-    // len() of sha256 hash is 64. 64 hex chars = 64*4 = 256 bits. 256/8 = 32 bytes
-    //so a len = 64 sha256 hash is a 32 byte object
 
-    // create a Sha256 object
-    // let mut hasher = Sha256::new();
-    // hasher.update(&genesis_time_leaf);
-    // // read hash digest and consume hasher
-    // let result = hasher.finalize();
 }
+
+
+
+
 
 pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
     // small inner func for converting vec<u8> to vecArray<u8>
