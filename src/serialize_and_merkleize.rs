@@ -393,7 +393,6 @@ pub fn serialize_beacon_state(
 }
 
 pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>) {
-    
     // takes vec<u8> of bytes - this is the actual serialized data
     // also takes Hashmap of <str, usize> - this is the byte length
     // of each field (actual length not offset for variable length fields)
@@ -405,8 +404,8 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     // 2) Need to examine each element to ensure each leaf is exactly 32 bytes
     // for those leaves that are not 32 bytes long, right pad them
 
-    // 3) There needs to be an even number of leaves to form a tree, so
-    // where the leaves feeding a root are not even, add a zero vector
+    // 3) The number of leaves must be a power of 2 to form a tree, so
+    // where the leaves feeding a root are not power of 2, add zero vectors
 
     // 4) for containers, hash leaves together sequentially to produce a
     // container hash
@@ -423,36 +422,32 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     // If so we need to extract branches, meaning hashes of all nodes connecting
     // leaf to root.
 
-
     let mut leaves = vec![];
     let mut start_idx: usize = 0;
-    
+
     pub fn hash(leaf: &Vec<u8>) -> String {
-        //TODO: DEAL WITH VEC OF >1 CHUNK
+        assert_eq!(leaf.len() % 32, 0);
+
         let mut hasher = Sha256::new();
         hasher.update(leaf);
         let result = hasher.finalize_reset();
         return hex::encode(result);
     }
 
-    pub fn pad_to_32_bytes(start: usize, length: usize, 
-        serialized_state: &Vec<u8>, sizes: &HashMap<&str,usize>)->Vec<u8>{
-
+    pub fn pad_bytes(start: usize, mut length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
         let var_as_bytes = &serialized_state[start..stop];
 
         // if there are exactly 32 bytes in var
-        if length == 32{
+        if length == 32 {
             assert_eq!(var_as_bytes.len(), 32);
             return var_as_bytes.to_vec();
-        }
-
-        else if length < 32{
+        } else if length < 32 {
             let mut padded_var: Vec<u8> = vec![];
             let n_pad = 32 - length;
             let pad = vec![0u8; n_pad];
-            
+
             for i in var_as_bytes.iter() {
                 padded_var.push(*i);
             }
@@ -460,128 +455,163 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
 
             assert_eq!(padded_var.len(), 32);
 
-            return padded_var
+            return padded_var;
         }
-
         // else if there are more than 32 bytes in var
         else {
-            
-            if length%32 ==0{
-                
-                // if there are already equal number of chunks
-                if (length/32 %2) ==0{
-                    assert_eq!(length/32 %2, 0);
-                    assert_eq!(length%32, 0);
+            if length % 32 == 0 {
+                let n_chunks: usize = length / 32;
+
+                // if N chunks is already a power of 2
+                if n_chunks.is_power_of_two() {
+                    assert_eq!(length / 32 % 2, 0);
+                    assert_eq!(length % 32, 0);
                     return var_as_bytes.to_vec();
                 }
-                
-                // if there is odd number of chunks add [0u8; 32]
-                else{
+                // if N chunks is not a power of 2,
+                // calculate how many chunks are needed and
+                // add that many [0u8; 32] to the serialized var
+                else {
+                    let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
                     let mut padded_var: Vec<u8> = vec![];
-                    let pad = vec![0u8; 32];
+                    let pad = vec![0u8; 32 * chunks_to_add];
                     for i in var_as_bytes.iter() {
                         padded_var.push(*i);
                     }
                     padded_var.extend_from_slice(&pad);
-                    
-                    assert_eq!(length/32 %2, 0);
-                    assert_eq!(length%32, 0);
-                    return padded_var
+
+                    assert_eq!(length / 32 % 2, 0);
+                    assert_eq!(length % 32, 0);
+
+                    return padded_var;
+                }
+            } else {
+                // make vec containing existing var bytes
+                // make a single 0 pad
+                let mut padded_var: Vec<u8> = vec![];
+                let pad = vec![0u8; 1];
+                // add the var bytes to the new vec
+                for i in var_as_bytes.iter() {
+                    padded_var.push(*i);
+                }
+                // add 0's to the vec until the length is a multiple of 32
+                while (length % 32 != 0) {
+                    padded_var.extend_from_slice(&pad);
+                    length += 1;
+                }
+
+                // make sure the length var == actual var length
+                assert_eq!(padded_var.len(), length);
+
+                // count 32 byte chunks in length
+                // update var_as_bytes to the new padded_var
+                // and reuse the variable names in next round
+                // of padding
+                let n_chunks: usize = length / 32;
+
+                // if N chunks is already a power of 2
+                // just return the var
+                if n_chunks.is_power_of_two() {
+                    assert_eq!(length / 32 % 2, 0);
+                    assert_eq!(length % 32, 0);
+                    return padded_var;
+                }
+                // if N chunks is not a power of 2,
+                // calculate how many chunks are needed and
+                // add that many [0u8; 32] to the serialized var
+                else {
+                    let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
+                    let pad = vec![0u8; 32 * chunks_to_add];
+
+                    padded_var.extend_from_slice(&pad);
+
+                    assert_eq!(length / 32 % 2, 0);
+                    assert_eq!(length % 32, 0);
+                    assert_eq!(length, n_chunks * 32);
+
+                    return padded_var;
                 }
             }
-
-            else{
-                return var_as_bytes.to_vec();
-                // TODO
-                // pad up to nearest multiple of 32
-                // then ensure even number of chunks
-                // will need another func to hash the chunks
-            }
-
         }
-        
-        
     }
 
-
     // APPLY PAD AND HASH FUNCS TO EACH VAR
-    let genesis_time = pad_to_32_bytes(start_idx, sizes["genesis_time"], &serialized_state, sizes);
-    start_idx+=sizes["genesis_time"] as usize;
+    let genesis_time = pad_bytes(start_idx, sizes["genesis_time"], &serialized_state);
+    start_idx += sizes["genesis_time"] as usize;
     let leaf_hash = hash(&genesis_time);
     leaves.push(leaf_hash);
 
-    let genesis_validators_root = pad_to_32_bytes(start_idx, sizes["genesis_validators_root"], &serialized_state, sizes);
-    start_idx+=sizes["genesis_validators_root"] as usize;
+    let genesis_validators_root = pad_bytes(
+        start_idx,
+        sizes["genesis_validators_root"],
+        &serialized_state,
+    );
+    start_idx += sizes["genesis_validators_root"] as usize;
     let leaf_hash = hash(&genesis_validators_root);
     leaves.push(leaf_hash);
 
-    let slot = pad_to_32_bytes(start_idx, sizes["slot"], &serialized_state, sizes);
-    start_idx+=sizes["slot"] as usize;
+    let slot = pad_bytes(start_idx, sizes["slot"], &serialized_state);
+    start_idx += sizes["slot"] as usize;
     let leaf_hash = hash(&slot);
     leaves.push(leaf_hash);
 
-    let fork_prev_ver = pad_to_32_bytes(start_idx, sizes["fork_prev_ver"], &serialized_state, sizes);
-    start_idx+=sizes["fork_prev_ver"] as usize;
+    let fork_prev_ver = pad_bytes(start_idx, sizes["fork_prev_ver"], &serialized_state);
+    start_idx += sizes["fork_prev_ver"] as usize;
     let leaf_hash = hash(&fork_prev_ver);
     leaves.push(leaf_hash);
 
-    let fork_curr_ver = pad_to_32_bytes(start_idx, sizes["fork_curr_ver"], &serialized_state, sizes);
-    start_idx+=sizes["fork_curr_ver"] as usize;
+    let fork_curr_ver = pad_bytes(start_idx, sizes["fork_curr_ver"], &serialized_state);
+    start_idx += sizes["fork_curr_ver"] as usize;
     let leaf_hash = hash(&fork_curr_ver);
     leaves.push(leaf_hash);
 
-    let fork_epoch = pad_to_32_bytes(start_idx, sizes["fork_epoch"], &serialized_state, sizes);
-    start_idx+=sizes["fork_epoch"] as usize;
+    let fork_epoch = pad_bytes(start_idx, sizes["fork_epoch"], &serialized_state);
+    start_idx += sizes["fork_epoch"] as usize;
     let leaf_hash = hash(&fork_epoch);
     leaves.push(leaf_hash);
 
-    let header_slot = pad_to_32_bytes(start_idx, sizes["header_slot"], &serialized_state, sizes);
-    start_idx+=sizes["header_slot"] as usize;
+    let header_slot = pad_bytes(start_idx, sizes["header_slot"], &serialized_state);
+    start_idx += sizes["header_slot"] as usize;
     let leaf_hash = hash(&header_slot);
     leaves.push(leaf_hash);
 
-    let header_proposer_index = pad_to_32_bytes(start_idx, sizes["header_proposer_index"], &serialized_state, sizes);
-    start_idx+=sizes["header_proposer_index"] as usize;
+    let header_proposer_index =
+        pad_bytes(start_idx, sizes["header_proposer_index"], &serialized_state);
+    start_idx += sizes["header_proposer_index"] as usize;
     let leaf_hash = hash(&header_proposer_index);
     leaves.push(leaf_hash);
 
-    let header_parent_root = pad_to_32_bytes(start_idx, sizes["header_parent_root"], &serialized_state, sizes);
-    start_idx+=sizes["header_parent_root"] as usize;
+    let header_parent_root = pad_bytes(start_idx, sizes["header_parent_root"], &serialized_state);
+    start_idx += sizes["header_parent_root"] as usize;
     let leaf_hash = hash(&header_parent_root);
     leaves.push(leaf_hash);
 
-    let header_state_root = pad_to_32_bytes(start_idx, sizes["header_state_root"], &serialized_state, sizes);
-    start_idx+=sizes["header_state_root"] as usize;
+    let header_state_root = pad_bytes(start_idx, sizes["header_state_root"], &serialized_state);
+    start_idx += sizes["header_state_root"] as usize;
     let leaf_hash = hash(&header_state_root);
     leaves.push(leaf_hash);
 
-    let header_body_root = pad_to_32_bytes(start_idx, sizes["header_body_root"], &serialized_state, sizes);
-    start_idx+=sizes["header_body_root"] as usize;
+    let header_body_root = pad_bytes(start_idx, sizes["header_body_root"], &serialized_state);
+    start_idx += sizes["header_body_root"] as usize;
     let leaf_hash = hash(&header_body_root);
     leaves.push(leaf_hash);
 
-    let block_roots = pad_to_32_bytes(start_idx, sizes["block_roots"], &serialized_state, sizes);
-    start_idx+=sizes["block_roots"] as usize;
+    let block_roots = pad_bytes(start_idx, sizes["block_roots"], &serialized_state);
+    start_idx += sizes["block_roots"] as usize;
     let leaf_hash = hash(&block_roots);
     leaves.push(leaf_hash);
 
-    let state_roots = pad_to_32_bytes(start_idx, sizes["state_roots"], &serialized_state, sizes);
-    start_idx+=sizes["state_roots"] as usize;
+    let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
+    start_idx += sizes["state_roots"] as usize;
     let leaf_hash = hash(&state_roots);
     leaves.push(leaf_hash);
 
-
-    
     for i in leaves.iter() {
         println!("{:?}", i);
     }
-
-
 }
-
-
-
-
 
 pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
     // small inner func for converting vec<u8> to vecArray<u8>
