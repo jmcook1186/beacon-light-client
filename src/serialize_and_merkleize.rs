@@ -435,13 +435,34 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
             let result = hasher.finalize_reset();
             return hex::encode(result);
         } else {
-            // take each pair of hashes and hash them together
-            // do this until only one hash is left
-            // this is the root - save this!
-            // until then return a dummy vec of 0s
+            // here we deal wioth vars that have multipole chunks
+            // by recursively hashign pairs and returning the root
+            assert!(leaf.len()>32);
+            assert!(leaf.len()%32==0);
+            let chunked_leaf: Vec<Vec<u8>> = leaf.chunks(32).map(|s| s.into()).collect();
+            println!("unchunked length: {:?}",leaf.len());
+            println!("chunked length: {:?}",chunked_leaf.len());
+            assert!(chunked_leaf.len()==leaf.len()/32);
 
-            let dummy: Vec<u8> = vec![0u8; 32];
-            return hex::encode(dummy);
+            let root: String;
+            let mut chunks = chunked_leaf.clone();
+            while chunks.len() !=1{ // while there are multiple nodes to hash
+                let mut temp: Vec<Vec<u8>> = vec![];
+                for i in (0..chunks.len()).step_by(2){ // step through nodes in pairs
+                    let mut hasher= Sha256::new();
+                    hasher.update(&chunks[i]);
+                    hasher.update(&chunks[i+1]);
+                    temp.push(hasher.finalize_reset().to_vec());
+                }
+                chunks = temp;
+            }
+
+            root = hex::encode(&chunks[0]);
+            // 64 hex chars = 32 bytes
+            assert_eq!(root.len(), 64);
+
+            return root;   
+
         }
     }
 
@@ -478,7 +499,7 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
                     // if length > 32 and multiple of 32
                     // but N chunks not a power of 2
 
-                    let padded_var: Vec<u8> = pad_chunks_to_power2(var_as_bytes, &length);
+                    let padded_var: Vec<u8> = pad_chunks_to_power2(var_as_bytes);
                     assert!(padded_var.len().is_power_of_two());
                     assert!(padded_var.len() % 32 == 0);
                     return padded_var;
@@ -490,7 +511,7 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
                 if intermediate_var.len().is_power_of_two() {
                     return intermediate_var;
                 } else {
-                    let padded_var: Vec<u8> = pad_chunks_to_power2(&intermediate_var, &length);
+                    let padded_var: Vec<u8> = pad_chunks_to_power2(&intermediate_var);
                     assert!(padded_var.len().is_power_of_two());
                     assert!(padded_var.len() % 32 == 0);
                     return padded_var;
@@ -541,22 +562,28 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         return padded_var;
     }
 
-    pub fn pad_chunks_to_power2(var: &[u8], length: &usize) -> Vec<u8> {
+    pub fn pad_chunks_to_power2(var: &[u8]) -> Vec<u8> {
         // for vars with multiple chunks, ensures number
         // of chunks is a power of 2
 
         assert!(var.len() % 32 == 0);
-        let n_chunks: usize = length / 32;
+        let n_chunks: usize = var.len() / 32;
 
         // if N chunks is already a power of 2
         if n_chunks.is_power_of_two() {
-            assert_eq!(length / 32 % 2, 0);
-            assert_eq!(length % 32, 0);
+            assert_eq!(var.len() / 32 % 2, 0);
+            assert_eq!(var.len() % 32, 0);
             return var.to_vec();
+        
         } else {
             // if N chunks is not a power of 2
             let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
+            assert!(chunks_to_add!=0);
+            assert!(var.len()%32 ==0);
+            
             let mut padded_var: Vec<u8> = vec![];
+            
             let pad = vec![0u8; 32 * chunks_to_add];
 
             for i in var.iter() {
