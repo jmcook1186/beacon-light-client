@@ -434,108 +434,210 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         return hex::encode(result);
     }
 
-    pub fn pad_bytes(start: usize, mut length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
+    pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
         let var_as_bytes = &serialized_state[start..stop];
 
-        // if there are exactly 32 bytes in var
         if length == 32 {
             assert_eq!(var_as_bytes.len(), 32);
-            return var_as_bytes.to_vec();
+            let padded_var = var_as_bytes.to_vec();
+            return padded_var;
         } else if length < 32 {
-            let mut padded_var: Vec<u8> = vec![];
-            let n_pad = 32 - length;
-            let pad = vec![0u8; n_pad];
-
-            for i in var_as_bytes.iter() {
-                padded_var.push(*i);
-            }
-            padded_var.extend_from_slice(&pad);
-
-            assert_eq!(padded_var.len(), 32);
-
+            let padded_var = pad_to_32(&serialized_state[start..stop], &length);
             return padded_var;
         }
-        // else if there are more than 32 bytes in var
+        // else length  > 32
         else {
+            assert!(length > 32, "unexpected condition: length <= 32");
+
             if length % 32 == 0 {
                 let n_chunks: usize = length / 32;
 
-                // if N chunks is already a power of 2
                 if n_chunks.is_power_of_two() {
-                    assert_eq!(length / 32 % 2, 0);
-                    assert_eq!(length % 32, 0);
-                    return var_as_bytes.to_vec();
-                }
-                // if N chunks is not a power of 2,
-                // calculate how many chunks are needed and
-                // add that many [0u8; 32] to the serialized var
-                else {
-                    let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
-
-                    let mut padded_var: Vec<u8> = vec![];
-                    let pad = vec![0u8; 32 * chunks_to_add];
-                    for i in var_as_bytes.iter() {
-                        padded_var.push(*i);
-                    }
-                    padded_var.extend_from_slice(&pad);
-
-                    assert_eq!(length / 32 % 2, 0);
-                    assert_eq!(length % 32, 0);
-
+                    let padded_var = var_as_bytes.to_vec();
+                    return padded_var;
+                } else {
+                    let padded_var = pad_chunks_to_power2(&serialized_state[start..stop], &length);
                     return padded_var;
                 }
             } else {
-                // make vec containing existing var bytes
-                // make a single 0 pad
-                let mut padded_var: Vec<u8> = vec![];
-                let pad = vec![0u8; 1];
-                // add the var bytes to the new vec
-                for i in var_as_bytes.iter() {
-                    padded_var.push(*i);
-                }
-                // add 0's to the vec until the length is a multiple of 32
-                while (length % 32 != 0) {
-                    padded_var.extend_from_slice(&pad);
-                    length += 1;
-                }
-
-                // make sure the length var == actual var length
-                assert_eq!(padded_var.len(), length);
-
-                // count 32 byte chunks in length
-                // update var_as_bytes to the new padded_var
-                // and reuse the variable names in next round
-                // of padding
-                let n_chunks: usize = length / 32;
-
-                // if N chunks is already a power of 2
-                // just return the var
-                if n_chunks.is_power_of_two() {
-                    assert_eq!(length / 32 % 2, 0);
-                    assert_eq!(length % 32, 0);
-                    return padded_var;
-                }
-                // if N chunks is not a power of 2,
-                // calculate how many chunks are needed and
-                // add that many [0u8; 32] to the serialized var
-                else {
-                    let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
-
-                    let pad = vec![0u8; 32 * chunks_to_add];
-
-                    padded_var.extend_from_slice(&pad);
-
-                    assert_eq!(length / 32 % 2, 0);
-                    assert_eq!(length % 32, 0);
-                    assert_eq!(length, n_chunks * 32);
-
-                    return padded_var;
-                }
+                let intermediate_var =
+                    pad_to_multiple_of_32(&serialized_state[start..stop], &length);
+                let padded_var = pad_chunks_to_power2(&intermediate_var, &length);
+                return padded_var;
             }
         }
     }
+
+    pub fn pad_to_32(var: &[u8], length: &usize) -> Vec<u8> {
+        let mut padded_var: Vec<u8> = vec![];
+        let n_pad = 32 - length;
+        let pad = vec![0u8; n_pad];
+
+        for i in var.iter() {
+            padded_var.push(*i);
+        }
+
+        padded_var.extend_from_slice(&pad);
+
+        assert_eq!(padded_var.len(), 32);
+
+        return padded_var;
+    }
+
+    pub fn pad_to_multiple_of_32(var: &[u8], length: &usize) -> Vec<u8> {
+        let mut padded_var: Vec<u8> = vec![];
+        let pad = vec![0u8; 1];
+        let mut length_mut = length.clone();
+
+        // add the var bytes to the new vec
+        for i in var.iter() {
+            padded_var.push(*i);
+        }
+
+        // add 0's to the vec until the length is a multiple of 32
+        while (length_mut % 32 != 0) {
+            padded_var.extend_from_slice(&pad);
+            length_mut += 1;
+        }
+
+        // make sure the length var == actual var length
+        assert_eq!(padded_var.len(), length.to_owned());
+
+        return padded_var;
+    }
+
+    pub fn pad_chunks_to_power2(var: &[u8], length: &usize) -> Vec<u8> {
+        let n_chunks: usize = length / 32;
+
+        // if N chunks is already a power of 2
+        if n_chunks.is_power_of_two() {
+            assert_eq!(length / 32 % 2, 0);
+            assert_eq!(length % 32, 0);
+            return var.to_vec();
+        } else {
+            let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
+            let mut padded_var: Vec<u8> = vec![];
+            let pad = vec![0u8; 32 * chunks_to_add];
+
+            for i in var.iter() {
+                padded_var.push(*i);
+            }
+
+            padded_var.extend_from_slice(&pad);
+
+            assert_eq!(length / 32 % 2, 0);
+            assert_eq!(length % 32, 0);
+            assert!(n_chunks.is_power_of_two());
+
+            return padded_var;
+        }
+    }
+
+    // pub fn pad_bytes(start: usize, mut length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
+    //     // start and stop idxs for vars in ssz serialized object
+    //     let stop = start + length;
+    //     let var_as_bytes = &serialized_state[start..stop];
+
+    //     // if there are exactly 32 bytes in var
+    //     if length == 32 {
+    //         assert_eq!(var_as_bytes.len(), 32);
+    //         return var_as_bytes.to_vec();
+    //     } else if length < 32 {
+    //         let mut padded_var: Vec<u8> = vec![];
+    //         let n_pad = 32 - length;
+    //         let pad = vec![0u8; n_pad];
+
+    //         for i in var_as_bytes.iter() {
+    //             padded_var.push(*i);
+    //         }
+    //         padded_var.extend_from_slice(&pad);
+
+    //         assert_eq!(padded_var.len(), 32);
+
+    //         return padded_var;
+    //     }
+    //     // else if there are more than 32 bytes in var
+    //     else {
+    //         if length % 32 == 0 {
+    //             let n_chunks: usize = length / 32;
+
+    //             // if N chunks is already a power of 2
+    //             if n_chunks.is_power_of_two() {
+    //                 assert_eq!(length / 32 % 2, 0);
+    //                 assert_eq!(length % 32, 0);
+    //                 return var_as_bytes.to_vec();
+    //             }
+    //             // if N chunks is not a power of 2,
+    //             // calculate how many chunks are needed and
+    //             // add that many [0u8; 32] to the serialized var
+    //             else {
+    //                 let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
+    //                 let mut padded_var: Vec<u8> = vec![];
+    //                 let pad = vec![0u8; 32 * chunks_to_add];
+    //                 for i in var_as_bytes.iter() {
+    //                     padded_var.push(*i);
+    //                 }
+    //                 padded_var.extend_from_slice(&pad);
+
+    //                 assert_eq!(length / 32 % 2, 0);
+    //                 assert_eq!(length % 32, 0);
+
+    //                 return padded_var;
+    //             }
+    //         } else {
+    //             // make vec containing existing var bytes
+    //             // make a single 0 pad
+    //             let mut padded_var: Vec<u8> = vec![];
+    //             let pad = vec![0u8; 1];
+    //             // add the var bytes to the new vec
+    //             for i in var_as_bytes.iter() {
+    //                 padded_var.push(*i);
+    //             }
+    //             // add 0's to the vec until the length is a multiple of 32
+    //             while (length % 32 != 0) {
+    //                 padded_var.extend_from_slice(&pad);
+    //                 length += 1;
+    //             }
+
+    //             // make sure the length var == actual var length
+    //             assert_eq!(padded_var.len(), length);
+
+    //             // count 32 byte chunks in length
+    //             // update var_as_bytes to the new padded_var
+    //             // and reuse the variable names in next round
+    //             // of padding
+    //             let n_chunks: usize = length / 32;
+
+    //             // if N chunks is already a power of 2
+    //             // just return the var
+    //             if n_chunks.is_power_of_two() {
+    //                 assert_eq!(length / 32 % 2, 0);
+    //                 assert_eq!(length % 32, 0);
+    //                 return padded_var;
+    //             }
+    //             // if N chunks is not a power of 2,
+    //             // calculate how many chunks are needed and
+    //             // add that many [0u8; 32] to the serialized var
+    //             else {
+    //                 let chunks_to_add = n_chunks.next_power_of_two() - n_chunks;
+
+    //                 let pad = vec![0u8; 32 * chunks_to_add];
+
+    //                 padded_var.extend_from_slice(&pad);
+
+    //                 assert_eq!(length / 32 % 2, 0);
+    //                 assert_eq!(length % 32, 0);
+    //                 assert_eq!(length, n_chunks * 32);
+
+    //                 return padded_var;
+    //             }
+    //         }
+    //     }
+    // }
 
     // APPLY PAD AND HASH FUNCS TO EACH VAR
     let genesis_time = pad_bytes(start_idx, sizes["genesis_time"], &serialized_state);
@@ -606,6 +708,14 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
     start_idx += sizes["state_roots"] as usize;
     let leaf_hash = hash(&state_roots);
+    leaves.push(leaf_hash);
+
+    // NOTE the following is OK WHILE N ROOTS==0 or 1, but will require
+    // sequential hashing of chunks when N ROOTs >1
+    // DEAL WITH THIS NEXT!!
+    let historical_roots = pad_bytes(start_idx, sizes["historical_roots"], &serialized_state);
+    start_idx += sizes["historical_roots"] as usize;
+    let leaf_hash = hash(&historical_roots);
     leaves.push(leaf_hash);
 
     for i in leaves.iter() {
