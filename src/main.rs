@@ -4,8 +4,9 @@ pub mod build_objects;
 pub mod constants;
 pub mod http_requests;
 pub mod light_client_types;
+pub mod merkleize;
 pub mod node_discovery;
-pub mod serialize_and_merkleize;
+pub mod serialize;
 extern crate hex;
 // use light_client_types::LightClientStore;
 
@@ -24,14 +25,14 @@ fn main() {
 
     // download beacon_state and make a snapshot
     let state = build_objects::get_state(&api_key, &state_id, &endpoint_prefix);
-    let snapshot = build_objects::make_snapshot(&state);
+    let _snapshot = build_objects::make_snapshot(&state);
 
     // download a beacon block and extract the body
-    let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
-    let finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
+    let _block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
+    let _finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
-    let (serialized_state, sizes) = serialize_and_merkleize::serialize_beacon_state(&state);
-    serialize_and_merkleize::merkleize_state(&serialized_state, &sizes);
+    let (serialized_state, sizes) = serialize::serialize_beacon_state(&state);
+    merkleize::merkleize_state(&serialized_state, &sizes);
 
     // build update object
     //serialization, merkleization and branch extraction for beacon_state are in here

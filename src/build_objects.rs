@@ -2,7 +2,7 @@ use std::format;
 extern crate hex;
 use crate::constants::{FINALIZED_ROOT_INDEX, NEXT_SYNC_COMMITTEE_INDEX};
 use crate::light_client_types::{LightClientSnapshot, LightClientUpdate};
-use crate::serialize_and_merkleize;
+use crate::serialize;
 use eth2::types::*;
 use ethereum_types::H256;
 
@@ -86,20 +86,17 @@ pub fn get_update(
 
     // serialize the beacon_state and chunk it into 32 byte leaves.
     // merklize the chunked vector, return the merkle tree and the depth of the tree
-    let leaves: Vec<H256> = serialize_and_merkleize::to_h256_chunks(&state);
-    let (tree, tree_depth) = serialize_and_merkleize::get_merkle_tree(&leaves);
+    let leaves: Vec<H256> = serialize::to_h256_chunks(&state);
+    let (tree, tree_depth) = serialize::get_merkle_tree(&leaves);
 
     // get branches (vectors of hashes at nodes connecting leaf to root)
-    let sync_comm_branch: Vec<H256> = serialize_and_merkleize::get_branch(
+    let sync_comm_branch: Vec<H256> = serialize::get_branch(
         &tree,
         NEXT_SYNC_COMMITTEE_INDEX as usize,
         tree_depth as usize,
     );
-    let finality_branch: Vec<H256> = serialize_and_merkleize::get_branch(
-        &tree,
-        FINALIZED_ROOT_INDEX as usize,
-        tree_depth as usize,
-    );
+    let finality_branch: Vec<H256> =
+        serialize::get_branch(&tree, FINALIZED_ROOT_INDEX as usize, tree_depth as usize);
 
     // build update object
     let update = LightClientUpdate {
