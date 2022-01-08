@@ -2,11 +2,11 @@ extern crate hex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-pub fn merkleize_state(
+pub fn calculate_leaves(
     serialized_state: &Vec<u8>,
     sizes: &HashMap<&str, usize>,
     offsets: &HashMap<&str, usize>,
-) {
+) -> Vec<String>{
     // takes vec<u8> of bytes - this is the actual serialized data
     // also takes Hashmap of <str, usize> - this is the byte length
     // of each field (actual length not offset for variable length fields)
@@ -482,4 +482,36 @@ pub fn merkleize_state(
             println!("{:?}", i);
         }
     }
+    return leaves;
+}
+
+pub fn build_tree(leaves: Vec<String>){
+
+    // firt add zero leaves until N leaves is a power of 2
+    let mut padded_leaves: Vec<String> = vec![];
+    for i in leaves.iter(){
+        padded_leaves.push(i.to_string());
+    }
+
+    let leaves_to_add: usize = leaves.len().next_power_of_two() - leaves.len();
+
+    let zeros: Vec<u8> = vec![0u8; 32];
+    let mut hasher = Sha256::new();
+    hasher.update(zeros);
+    let result = hasher.finalize_reset();
+    let result = hex::encode(result);
+    
+    for i in (0..leaves_to_add){
+        padded_leaves.push(result.clone());
+    }
+
+    assert!(padded_leaves.len()==64);
+
+
+    // build a tree that is a vector of vectors of strings
+    // each sub-vector will be a layer in the tree
+    // each string is a hex encoded hash (i.e. a node)
+    let tree: Vec<Vec<String>> = vec![];
+
+
 }

@@ -32,7 +32,9 @@ fn main() {
     let _finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
-    merkleize::merkleize_state(&serialized_state, &sizes, &offsets);
+    let leaves = merkleize::calculate_leaves(&serialized_state, &sizes, &offsets);
+
+    merkleize::build_tree(leaves);
 
     // build update object
     //serialization, merkleization and branch extraction for beacon_state are in here
