@@ -2,7 +2,11 @@ extern crate hex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>) {
+pub fn merkleize_state(
+    serialized_state: &Vec<u8>,
+    sizes: &HashMap<&str, usize>,
+    offsets: &HashMap<&str, usize>,
+) {
     // takes vec<u8> of bytes - this is the actual serialized data
     // also takes Hashmap of <str, usize> - this is the byte length
     // of each field (actual length not offset for variable length fields)
@@ -82,6 +86,8 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
+        println!("start = {:?}, length = {:?}", &start, &length);
+        assert!(stop < serialized_state.len(), "stop exceeds end of ssz obj");
         let var_as_bytes = &serialized_state[start..stop];
 
         if length == 32 {
@@ -225,7 +231,7 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
         sizes["genesis_validators_root"],
         &serialized_state,
     );
-    start_idx += sizes["genesis_validators_root"] as usize;
+    start_idx += sizes["genesis_validators_root"] - 1 as usize;
     let leaf_hash = hash(&genesis_validators_root);
     leaves.push(leaf_hash);
 
@@ -280,16 +286,23 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let leaf_hash = hash(&block_roots);
     leaves.push(leaf_hash);
 
+    println!("START_IDX IS {:?}", start_idx);
     let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
     start_idx += sizes["state_roots"] as usize;
     let leaf_hash = hash(&state_roots);
     leaves.push(leaf_hash);
 
-    let historical_roots = pad_bytes(start_idx, sizes["historical_roots"], &serialized_state);
-    start_idx += sizes["historical_roots"] as usize;
+    println!("START_IDX IS {:?}", start_idx);
+    let historical_roots = pad_bytes(
+        offsets["historical_roots"],
+        sizes["historical_roots"],
+        &serialized_state,
+    );
+    start_idx += 4;
     let leaf_hash = hash(&historical_roots);
     leaves.push(leaf_hash);
 
+    println!("START_IDX IS {:?}", start_idx);
     let eth1_data_dep_root = pad_bytes(start_idx, sizes["eth1_data_dep_root"], &serialized_state);
     start_idx += sizes["eth1_data_dep_root"] as usize;
     let leaf_hash = hash(&eth1_data_dep_root);
@@ -310,8 +323,12 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let leaf_hash = hash(&eth1_data_block_hash);
     leaves.push(leaf_hash);
 
-    let eth1_data_votes = pad_bytes(start_idx, sizes["eth1_data_votes"], &serialized_state);
-    start_idx += sizes["eth1_data_votes"] as usize;
+    let eth1_data_votes = pad_bytes(
+        offsets["eth1_data_votes"],
+        sizes["eth1_data_votes"],
+        &serialized_state,
+    );
+    start_idx += 4;
     let leaf_hash = hash(&eth1_data_votes);
     leaves.push(leaf_hash);
 
@@ -320,13 +337,17 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let leaf_hash = hash(&eth1_deposit_index);
     leaves.push(leaf_hash);
 
-    let validators = pad_bytes(start_idx, sizes["validators"], &serialized_state);
-    start_idx += sizes["validators"] as usize;
+    let validators = pad_bytes(
+        offsets["validators"],
+        sizes["validators"],
+        &serialized_state,
+    );
+    start_idx += 4;
     let leaf_hash = hash(&validators);
     leaves.push(leaf_hash);
 
-    let balances = pad_bytes(start_idx, sizes["balances"], &serialized_state);
-    start_idx += sizes["balances"] as usize;
+    let balances = pad_bytes(offsets["balances"], sizes["balances"], &serialized_state);
+    start_idx += 4;
     let leaf_hash = hash(&balances);
     leaves.push(leaf_hash);
 
@@ -341,25 +362,29 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     leaves.push(leaf_hash);
 
     let previous_epoch_participation = pad_bytes(
-        start_idx,
+        offsets["previous_epoch_participation"],
         sizes["previous_epoch_participation"],
         &serialized_state,
     );
-    start_idx += sizes["previous_epoch_participation"] as usize;
+    start_idx += 4;
     let leaf_hash = hash(&previous_epoch_participation);
     leaves.push(leaf_hash);
 
     let current_epoch_participation = pad_bytes(
-        start_idx,
+        offsets["current_epoch_participation"],
         sizes["current_epoch_participation"],
         &serialized_state,
     );
-    start_idx += sizes["current_epoch_participation"] as usize;
+    start_idx += 4;
     let leaf_hash = hash(&current_epoch_participation);
     leaves.push(leaf_hash);
 
-    let justification_bits = pad_bytes(start_idx, sizes["justification_bits"], &serialized_state);
-    start_idx += sizes["justification_bits"] as usize;
+    let justification_bits = pad_bytes(
+        offsets["justification_bits"],
+        sizes["justification_bits"],
+        &serialized_state,
+    );
+    start_idx += 4;
     let leaf_hash = hash(&justification_bits);
     leaves.push(leaf_hash);
 
@@ -402,8 +427,12 @@ pub fn merkleize_state(serialized_state: &Vec<u8>, sizes: &HashMap<&str, usize>)
     let leaf_hash = hash(&finalized_checkpoint_root);
     leaves.push(leaf_hash);
 
-    let inactivity_scores = pad_bytes(start_idx, sizes["inactivity_scores"], &serialized_state);
-    start_idx += sizes["inactivity_scores"] as usize;
+    let inactivity_scores = pad_bytes(
+        offsets["inactivity_scores"],
+        sizes["inactivity_scores"],
+        &serialized_state,
+    );
+    start_idx += 4;
     let leaf_hash = hash(&inactivity_scores);
     leaves.push(leaf_hash);
 
