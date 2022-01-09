@@ -14,28 +14,24 @@ fn main() {
     // set basic vars and get api key from secret
     let (node_id, node_number) = node_discovery::get_random_node_id(10, 8000);
     let state_id = "finalized";
-
+    let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
     let api_key: String = fs::read_to_string(format!(
         "/home/joe/.lighthouse/local-testnet/node_{}/validators/api-token.txt",
         node_number.to_string()
     ))
     .expect("Failed to connect to a Beacon Node");
 
-    let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
-
     // download beacon_state and make a snapshot
     let state = build_objects::get_state(&api_key, &state_id, &endpoint_prefix);
     let _snapshot = build_objects::make_snapshot(&state);
 
     // download a beacon block and extract the body
-    let _block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
-    let _finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
+    let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
 
     // ssz serialize the state object, pad and hash each field, build merkle tree
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
     let leaves = merkleize::calculate_leaves(&serialized_state, &sizes, &offsets);
     let tree = merkleize::build_tree(leaves);
 
-
-
+    println!("downloaded state root: {:?}\n", block.state_root());
 }

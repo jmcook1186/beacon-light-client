@@ -92,10 +92,12 @@ pub fn calculate_leaves(
         if length == 32 {
             assert_eq!(var_as_bytes.len(), 32 as usize);
             let padded_var: Vec<u8> = var_as_bytes.to_vec();
+
             return padded_var;
         } else if length < 32 {
             assert!(var_as_bytes.len() < 32);
             let padded_var: Vec<u8> = pad_to_32(var_as_bytes, &length);
+            assert_eq!(padded_var.len(), 32);
             return padded_var;
         } else {
             //else length > 32
@@ -482,7 +484,7 @@ pub fn calculate_leaves(
     return leaves;
 }
 
-pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>>{
+pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
     // firt add zero leaves until N leaves is a power of 2
     let mut padded_leaves: Vec<String> = vec![];
     for i in leaves.iter() {
@@ -501,6 +503,8 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>>{
         padded_leaves.push(result.clone());
     }
 
+    // there should be 64 leaves, and the length
+    // of erach leaf should eb 64 chars
     assert!(padded_leaves.len() == 64);
     assert!(padded_leaves[0].len() == 64);
 
@@ -511,9 +515,21 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>>{
     let mut leaves_to_hash: Vec<String> = padded_leaves.clone();
 
     tree.push(padded_leaves);
+
+    // take pairs of leaves and hash them together,
+    // appending the resulting hash to the next layer
+    // in the tree. Do this sequentially for each layer
+    // until there is just one hash (==root)
+    let mut layer: usize = 6; //just for logging to console
+    println!("\n***BUILDING MERKLE TREE\n");
+    println!("\n*** NOW HASHING LEAVES ***\n");
+
     while leaves_to_hash.len() > 1 {
         let mut new_nodes: Vec<String> = vec![];
+        println!("\nHASHING IN LAYER {:?}\n", layer);
+        // count through leaves in steps of 2
         for i in (0..leaves_to_hash.len()).step_by(2) {
+            println!("hashing leaves {:?} with {:?}", i, i + 1);
             let mut hasher = Sha256::new();
             hasher.update(&leaves_to_hash[i]);
             hasher.update(&leaves_to_hash[i + 1]);
@@ -521,21 +537,21 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>>{
             let result = hex::encode(result);
             new_nodes.push(result)
         }
-        
+        layer -= 1;
         leaves_to_hash = new_nodes.clone();
         tree.push(new_nodes);
     }
-
+    println!("\nFINISHED BUILDING MERKLE TREE");
     println!("\n*** MERKLE TREE PROPERTIES ***\n");
-    println!("N LAYERS: {:?}\n",tree.len());
+    println!("N LAYERS IN TREE: {:?}\n", tree.len());
     println!("Lengths should decrease in powers of 2 from leaves to root");
-    println!("LAYER 1 LEN: {:?}",tree[0].len());
-    println!("LAYER 2 LEN: {:?}",tree[1].len());
-    println!("LAYER 3 LEN: {:?}",tree[2].len());
-    println!("LAYER 4 LEN: {:?}",tree[3].len());
-    println!("LAYER 5 LEN: {:?}",tree[4].len());
-    println!("LAYER 6 LEN: {:?}",tree[5].len());
-    println!("LAYER 7 LEN: {:?}",tree[6].len());
+    println!("N LEAVES LAYER 7: {:?}", tree[0].len());
+    println!("N NODES LAYER 6: {:?}", tree[1].len());
+    println!("N NODES LAYER 5: {:?}", tree[2].len());
+    println!("N NODES LAYER 4: {:?}", tree[3].len());
+    println!("N NODES LAYER 3: {:?}", tree[4].len());
+    println!("N NODES LAYER 2: {:?}", tree[5].len());
+    println!("N NODES LAYER 1: {:?}", tree[6].len());
     println!("STATE_ROOT: {:?}\n", tree[6]);
 
     return tree;
