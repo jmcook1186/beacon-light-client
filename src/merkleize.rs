@@ -6,7 +6,7 @@ pub fn calculate_leaves(
     serialized_state: &Vec<u8>,
     sizes: &HashMap<&str, usize>,
     offsets: &HashMap<&str, usize>,
-) -> Vec<String>{
+) -> Vec<String> {
     // takes vec<u8> of bytes - this is the actual serialized data
     // also takes Hashmap of <str, usize> - this is the byte length
     // of each field (actual length not offset for variable length fields)
@@ -86,7 +86,6 @@ pub fn calculate_leaves(
     pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
-        println!("start = {:?}, length = {:?}", &start, &length);
         assert!(stop < serialized_state.len(), "stop exceeds end of ssz obj");
         let var_as_bytes = &serialized_state[start..stop];
 
@@ -286,13 +285,11 @@ pub fn calculate_leaves(
     let leaf_hash = hash(&block_roots);
     leaves.push(leaf_hash);
 
-    println!("START_IDX IS {:?}", start_idx);
     let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
     start_idx += sizes["state_roots"] as usize;
     let leaf_hash = hash(&state_roots);
     leaves.push(leaf_hash);
 
-    println!("START_IDX IS {:?}", start_idx);
     let historical_roots = pad_bytes(
         offsets["historical_roots"],
         sizes["historical_roots"],
@@ -302,7 +299,6 @@ pub fn calculate_leaves(
     let leaf_hash = hash(&historical_roots);
     leaves.push(leaf_hash);
 
-    println!("START_IDX IS {:?}", start_idx);
     let eth1_data_dep_root = pad_bytes(start_idx, sizes["eth1_data_dep_root"], &serialized_state);
     start_idx += sizes["eth1_data_dep_root"] as usize;
     let leaf_hash = hash(&eth1_data_dep_root);
@@ -474,22 +470,22 @@ pub fn calculate_leaves(
     // there should always be 37 fields, so 37 hashes
     assert_eq!(leaves.len(), 37);
 
-    println!("\nHASHES FOR EACH FIELD IN STATE:\n");
-    for i in leaves.iter() {
-        if i == "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" {
-            println!(" {:?} (zero hash)", i);
-        } else {
-            println!("{:?}", i);
-        }
-    }
+    // OPTIONAL PRINT EACH LEAF HASH (ROOTS FOR MULTICHUNK VARS)
+    // println!("\nHASHES FOR EACH FIELD IN STATE:\n");
+    // for i in leaves.iter() {
+    //     if i == "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" {
+    //         println!(" {:?} (zero hash)", i);
+    //     } else {
+    //         println!("{:?}", i);
+    //     }
+    // }
     return leaves;
 }
 
-pub fn build_tree(leaves: Vec<String>){
-
+pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>>{
     // firt add zero leaves until N leaves is a power of 2
     let mut padded_leaves: Vec<String> = vec![];
-    for i in leaves.iter(){
+    for i in leaves.iter() {
         padded_leaves.push(i.to_string());
     }
 
@@ -500,18 +496,47 @@ pub fn build_tree(leaves: Vec<String>){
     hasher.update(zeros);
     let result = hasher.finalize_reset();
     let result = hex::encode(result);
-    
-    for i in (0..leaves_to_add){
+
+    for i in (0..leaves_to_add) {
         padded_leaves.push(result.clone());
     }
 
-    assert!(padded_leaves.len()==64);
-
+    assert!(padded_leaves.len() == 64);
+    assert!(padded_leaves[0].len() == 64);
 
     // build a tree that is a vector of vectors of strings
     // each sub-vector will be a layer in the tree
     // each string is a hex encoded hash (i.e. a node)
-    let tree: Vec<Vec<String>> = vec![];
+    let mut tree: Vec<Vec<String>> = vec![];
+    let mut leaves_to_hash: Vec<String> = padded_leaves.clone();
 
+    tree.push(padded_leaves);
+    while leaves_to_hash.len() > 1 {
+        let mut new_nodes: Vec<String> = vec![];
+        for i in (0..leaves_to_hash.len()).step_by(2) {
+            let mut hasher = Sha256::new();
+            hasher.update(&leaves_to_hash[i]);
+            hasher.update(&leaves_to_hash[i + 1]);
+            let result = hasher.finalize_reset();
+            let result = hex::encode(result);
+            new_nodes.push(result)
+        }
+        
+        leaves_to_hash = new_nodes.clone();
+        tree.push(new_nodes);
+    }
 
+    println!("\n*** MERKLE TREE PROPERTIES ***\n");
+    println!("N LAYERS: {:?}\n",tree.len());
+    println!("Lengths should decrease in powers of 2 from leaves to root");
+    println!("LAYER 1 LEN: {:?}",tree[0].len());
+    println!("LAYER 2 LEN: {:?}",tree[1].len());
+    println!("LAYER 3 LEN: {:?}",tree[2].len());
+    println!("LAYER 4 LEN: {:?}",tree[3].len());
+    println!("LAYER 5 LEN: {:?}",tree[4].len());
+    println!("LAYER 6 LEN: {:?}",tree[5].len());
+    println!("LAYER 7 LEN: {:?}",tree[6].len());
+    println!("STATE_ROOT: {:?}\n", tree[6]);
+
+    return tree;
 }

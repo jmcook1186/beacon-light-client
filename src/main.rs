@@ -31,16 +31,11 @@ fn main() {
     let _block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
     let _finality_header = build_objects::get_header(&api_key, &state_id, &endpoint_prefix); //must have state_id == "finalized"
 
+    // ssz serialize the state object, pad and hash each field, build merkle tree
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
     let leaves = merkleize::calculate_leaves(&serialized_state, &sizes, &offsets);
+    let tree = merkleize::build_tree(leaves);
 
-    merkleize::build_tree(leaves);
 
-    // build update object
-    //serialization, merkleization and branch extraction for beacon_state are in here
-    //let update = build_objects::get_update(state, block, finality_header);
 
-    //serialize_and_merkleize::serialize_beacon_state(&state);
-    // let mut store = LightClientStore::create(snapshot);
-    // store.valid_updates.push(update);
 }

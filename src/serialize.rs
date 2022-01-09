@@ -231,40 +231,38 @@ pub fn serialize_beacon_state(
     // .len() is right for this as all vars have u8 type,
     // so N elements == N bytes
     // 4 bytes as placeholder for variable length offsets
-    let byte_len_fixed_parts = 
-    genesis_time.len() +
-    genesis_validators_root.len() +
-    slot.len() +
-    fork_curr_ver.len() +
-    fork_prev_ver.len() +
-    fork_epoch.len() +
-    header_slot.len() +
-    header_proposer_index.len() +
-    header_parent_root.len() +
-    header_body_root.len() +
-    header_state_root.len() +
-    block_roots.len() +
-    state_roots.len() +
-    eth1_data_block_hash.len() +
-    eth1_data_dep_root.len() +
-    eth1_data_deposit_count.len() +
-    eth1_deposit_index.len() +
-    randao_mixes.len() +
-    slashings.len() +
-    prev_just_check_epoch.len() +
-    prev_just_check_root.len() +
-    curr_just_check_epoch.len() +
-    curr_just_check_root.len() +
-    finalized_check_epoch.len() +
-    finalized_checkpoint_root.len() +
-    curr_sync_comm_pubkeys.len() +
-    curr_sync_comm_agg_pubkey.len() +
-    next_sync_comm_pubkeys.len() +
-    next_sync_comm_agg_pubkey.len() +
-    (BYTES_PER_LENGTH_OFFSET * N_VARIABLE_LENGTH);
+    let byte_len_fixed_parts = genesis_time.len()
+        + genesis_validators_root.len()
+        + slot.len()
+        + fork_curr_ver.len()
+        + fork_prev_ver.len()
+        + fork_epoch.len()
+        + header_slot.len()
+        + header_proposer_index.len()
+        + header_parent_root.len()
+        + header_body_root.len()
+        + header_state_root.len()
+        + block_roots.len()
+        + state_roots.len()
+        + eth1_data_block_hash.len()
+        + eth1_data_dep_root.len()
+        + eth1_data_deposit_count.len()
+        + eth1_deposit_index.len()
+        + randao_mixes.len()
+        + slashings.len()
+        + prev_just_check_epoch.len()
+        + prev_just_check_root.len()
+        + curr_just_check_epoch.len()
+        + curr_just_check_root.len()
+        + finalized_check_epoch.len()
+        + finalized_checkpoint_root.len()
+        + curr_sync_comm_pubkeys.len()
+        + curr_sync_comm_agg_pubkey.len()
+        + next_sync_comm_pubkeys.len()
+        + next_sync_comm_agg_pubkey.len()
+        + (BYTES_PER_LENGTH_OFFSET * N_VARIABLE_LENGTH);
 
     sizes.insert("fixed_parts", byte_len_fixed_parts);
-    println!("length of fixed part = {:?}", byte_len_fixed_parts);
 
     // CALCULATE VARIABLE LENGTH OFFSETS
     // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
@@ -430,23 +428,24 @@ pub fn serialize_beacon_state(
         }
     }
 
-    println!(
-        "byte length of ssz serialized state object: {:?}",
-        serialized_state.len()
-    );
-
+    // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
+    // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
     // println!(
-    //     "implied byte length of variable length vars: {:?}",
+    //     "byte length of ssz serialized state object: {:?}",
+    //     serialized_state.len()
+    // );
+    // println!(
+    //     "\nimplied byte length of variable length vars: {:?}",
     //     serialized_state.len() - byte_len_fixed_parts
     // );
-
+    // println!("\nSIZE (BYTES) OF EACH VAR:\n");
     // for (key, value) in sizes.iter() {
     //     println!("{:?}: {:?}", key, value);
     // }
-
-    for (key, value) in offsets.iter() {
-        println!("{:?}: {:?}", key, value);
-    }
+    // println!("\nVARIABLE LENGTH OFFSETS:\n");
+    // for (key, value) in offsets.iter() {
+    //     println!("{:?}: {:?}", key, value);
+    // }
 
     return (serialized_state, sizes, offsets);
 }
