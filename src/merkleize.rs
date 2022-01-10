@@ -1,45 +1,28 @@
 extern crate hex;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use bit_vec::BitVec;
 
 pub fn calculate_leaves(
     serialized_state: &Vec<u8>,
     sizes: &HashMap<&str, usize>,
     offsets: &HashMap<&str, usize>,
 ) -> Vec<String> {
-    // takes vec<u8> of bytes - this is the actual serialized data
-    // also takes Hashmap of <str, usize> - this is the byte length
-    // of each field (actual length not offset for variable length fields)
 
-    // 1) need to know size in bytes of every element in state (from hashmap)
-    // object so we can retrieve their bytes from the serialized state. Also
-    // need a hasher that can take 32 bytes and return a valid hash
-
-    // 2) Need to examine each element to ensure each leaf is exactly 32 bytes
-    // for those leaves that are not 32 bytes long, right pad them
-
-    // 3) The number of leaves must be a power of 2 to form a tree, so
-    // where the leaves feeding a root are not power of 2, add zero vectors
-
-    // 4) for containers, hash leaves together sequentially to produce a
-    // container hash
-
-    // 5) Now the tree should have one 32 byte element for each field in the
-    // state object, so we can start to hash adjacent leaves to form the merkle tree
-    // and veentually compute the state root
-
-    // 6) We should then be able to verify that the serialization and merkleization
-    // was successful by comparing the computed root to the state root in the block header
-
-    // then on to generalized indices - can we verify that the objects in the
-    // positions defined in our constants file definitely contain the right data?
-    // If so we need to extract branches, meaning hashes of all nodes connecting
-    // leaf to root.
+    // sha256 hashes vecs of bytes from serialized object
+    // mixes in length data as per spec
 
     let mut leaves = vec![];
     let mut start_idx: usize = 0;
 
-    pub fn hash(leaf: &Vec<u8>) -> String {
+    pub fn hash(leaf: &Vec<u8>, length: &usize) -> String {
+
+        // we need a bytes representation (length 32) of
+        // the var length to "mix_in_length" later
+        let length_bytes = length.to_le_bytes();
+        let length_bytes = pad_to_32(&length_bytes, &length_bytes.len());
+        
+        assert_eq!(length_bytes.len(), 32);
         assert!(leaf.len() >= 32);
         assert_eq!(leaf.len() % 32, 0);
 
@@ -75,7 +58,14 @@ pub fn calculate_leaves(
             assert!(chunks.len() == 1);
             assert_eq!(chunks[0].len(), 32);
 
-            root = hex::encode(&chunks[0]);
+            // mix in length data
+            let mut hasher = Sha256::new();
+            hasher.update(&chunks[0]);
+            hasher.update(length_bytes);
+            let hash = hasher.finalize_reset().to_vec();
+
+            let root = hex::encode(hash);
+
             // 64 hex chars = 32 bytes
             assert_eq!(root.len(), 64);
 
@@ -224,7 +214,7 @@ pub fn calculate_leaves(
     // APPLY PAD AND HASH FUNCS TO EACH VAR
     let genesis_time = pad_bytes(start_idx, sizes["genesis_time"], &serialized_state);
     start_idx += sizes["genesis_time"] as usize;
-    let leaf_hash = hash(&genesis_time);
+    let leaf_hash = hash(&genesis_time, &sizes["genesis_time"]);
     leaves.push(leaf_hash);
 
     let genesis_validators_root = pad_bytes(
@@ -232,64 +222,64 @@ pub fn calculate_leaves(
         sizes["genesis_validators_root"],
         &serialized_state,
     );
-    start_idx += sizes["genesis_validators_root"] - 1 as usize;
-    let leaf_hash = hash(&genesis_validators_root);
+    start_idx += sizes["genesis_validators_root"] as usize;
+    let leaf_hash = hash(&genesis_validators_root, &sizes["genesis_validators_root"]);
     leaves.push(leaf_hash);
 
     let slot = pad_bytes(start_idx, sizes["slot"], &serialized_state);
     start_idx += sizes["slot"] as usize;
-    let leaf_hash = hash(&slot);
+    let leaf_hash = hash(&slot, &sizes["slot"]);
     leaves.push(leaf_hash);
 
     let fork_prev_ver = pad_bytes(start_idx, sizes["fork_prev_ver"], &serialized_state);
     start_idx += sizes["fork_prev_ver"] as usize;
-    let leaf_hash = hash(&fork_prev_ver);
+    let leaf_hash = hash(&fork_prev_ver, &sizes["slot"]);
     leaves.push(leaf_hash);
 
     let fork_curr_ver = pad_bytes(start_idx, sizes["fork_curr_ver"], &serialized_state);
     start_idx += sizes["fork_curr_ver"] as usize;
-    let leaf_hash = hash(&fork_curr_ver);
+    let leaf_hash = hash(&fork_curr_ver, &sizes["fork_curr_ver"]);
     leaves.push(leaf_hash);
 
     let fork_epoch = pad_bytes(start_idx, sizes["fork_epoch"], &serialized_state);
     start_idx += sizes["fork_epoch"] as usize;
-    let leaf_hash = hash(&fork_epoch);
+    let leaf_hash = hash(&fork_epoch, &sizes["fork_epoch"]);
     leaves.push(leaf_hash);
 
     let header_slot = pad_bytes(start_idx, sizes["header_slot"], &serialized_state);
     start_idx += sizes["header_slot"] as usize;
-    let leaf_hash = hash(&header_slot);
+    let leaf_hash = hash(&header_slot, &sizes["header_slot"]);
     leaves.push(leaf_hash);
 
     let header_proposer_index =
         pad_bytes(start_idx, sizes["header_proposer_index"], &serialized_state);
     start_idx += sizes["header_proposer_index"] as usize;
-    let leaf_hash = hash(&header_proposer_index);
+    let leaf_hash = hash(&header_proposer_index, &sizes["header_proposer_index"]);
     leaves.push(leaf_hash);
 
     let header_parent_root = pad_bytes(start_idx, sizes["header_parent_root"], &serialized_state);
     start_idx += sizes["header_parent_root"] as usize;
-    let leaf_hash = hash(&header_parent_root);
+    let leaf_hash = hash(&header_parent_root, &sizes["header_parent_root"]);
     leaves.push(leaf_hash);
 
     let header_state_root = pad_bytes(start_idx, sizes["header_state_root"], &serialized_state);
     start_idx += sizes["header_state_root"] as usize;
-    let leaf_hash = hash(&header_state_root);
+    let leaf_hash = hash(&header_state_root, &sizes["header_state_root"]);
     leaves.push(leaf_hash);
 
     let header_body_root = pad_bytes(start_idx, sizes["header_body_root"], &serialized_state);
     start_idx += sizes["header_body_root"] as usize;
-    let leaf_hash = hash(&header_body_root);
+    let leaf_hash = hash(&header_body_root, &sizes["header_body_root"]);
     leaves.push(leaf_hash);
 
     let block_roots = pad_bytes(start_idx, sizes["block_roots"], &serialized_state);
     start_idx += sizes["block_roots"] as usize;
-    let leaf_hash = hash(&block_roots);
+    let leaf_hash = hash(&block_roots, &sizes["block_roots"]);
     leaves.push(leaf_hash);
 
     let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
     start_idx += sizes["state_roots"] as usize;
-    let leaf_hash = hash(&state_roots);
+    let leaf_hash = hash(&state_roots, &sizes["state_roots"]);
     leaves.push(leaf_hash);
 
     let historical_roots = pad_bytes(
@@ -298,12 +288,12 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&historical_roots);
+    let leaf_hash = hash(&historical_roots, &sizes["historical_roots"]);
     leaves.push(leaf_hash);
 
     let eth1_data_dep_root = pad_bytes(start_idx, sizes["eth1_data_dep_root"], &serialized_state);
     start_idx += sizes["eth1_data_dep_root"] as usize;
-    let leaf_hash = hash(&eth1_data_dep_root);
+    let leaf_hash = hash(&eth1_data_dep_root, &sizes["eth1_data_dep_root"]);
     leaves.push(leaf_hash);
 
     let eth1_data_deposit_count = pad_bytes(
@@ -312,13 +302,13 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["eth1_data_deposit_count"] as usize;
-    let leaf_hash = hash(&eth1_data_deposit_count);
+    let leaf_hash = hash(&eth1_data_deposit_count, &sizes["eth1_data_deposit_count"]);
     leaves.push(leaf_hash);
 
     let eth1_data_block_hash =
         pad_bytes(start_idx, sizes["eth1_data_block_hash"], &serialized_state);
     start_idx += sizes["eth1_data_block_hash"] as usize;
-    let leaf_hash = hash(&eth1_data_block_hash);
+    let leaf_hash = hash(&eth1_data_block_hash, &sizes["eth1_data_block_hash"]);
     leaves.push(leaf_hash);
 
     let eth1_data_votes = pad_bytes(
@@ -327,12 +317,12 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&eth1_data_votes);
+    let leaf_hash = hash(&eth1_data_votes, &sizes["eth1_data_votes"]);
     leaves.push(leaf_hash);
 
     let eth1_deposit_index = pad_bytes(start_idx, sizes["eth1_deposit_index"], &serialized_state);
     start_idx += sizes["eth1_deposit_index"] as usize;
-    let leaf_hash = hash(&eth1_deposit_index);
+    let leaf_hash = hash(&eth1_deposit_index, &sizes["eth1_deposit_index"]);
     leaves.push(leaf_hash);
 
     let validators = pad_bytes(
@@ -341,22 +331,22 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&validators);
+    let leaf_hash = hash(&validators, &sizes["validators"]);
     leaves.push(leaf_hash);
 
     let balances = pad_bytes(offsets["balances"], sizes["balances"], &serialized_state);
     start_idx += 4;
-    let leaf_hash = hash(&balances);
+    let leaf_hash = hash(&balances, &sizes["balances"]);
     leaves.push(leaf_hash);
 
     let randao_mixes = pad_bytes(start_idx, sizes["randao_mixes"], &serialized_state);
     start_idx += sizes["randao_mixes"] as usize;
-    let leaf_hash = hash(&randao_mixes);
+    let leaf_hash = hash(&randao_mixes, &sizes["randao_mixes"]);
     leaves.push(leaf_hash);
 
     let slashings = pad_bytes(start_idx, sizes["slashings"], &serialized_state);
     start_idx += sizes["slashings"] as usize;
-    let leaf_hash = hash(&slashings);
+    let leaf_hash = hash(&slashings, &sizes["slashings"]);
     leaves.push(leaf_hash);
 
     let previous_epoch_participation = pad_bytes(
@@ -365,7 +355,10 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&previous_epoch_participation);
+    let leaf_hash = hash(
+        &previous_epoch_participation,
+        &sizes["previous_epoch_participation"],
+    );
     leaves.push(leaf_hash);
 
     let current_epoch_participation = pad_bytes(
@@ -374,7 +367,10 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&current_epoch_participation);
+    let leaf_hash = hash(
+        &current_epoch_participation,
+        &sizes["current_epoch_participation"],
+    );
     leaves.push(leaf_hash);
 
     let justification_bits = pad_bytes(
@@ -382,38 +378,39 @@ pub fn calculate_leaves(
         sizes["justification_bits"],
         &serialized_state,
     );
+
     start_idx += 4;
-    let leaf_hash = hash(&justification_bits);
+    let leaf_hash = hash(&justification_bits, &sizes["justification_bits"]);
     leaves.push(leaf_hash);
 
     let prev_just_check_epoch =
         pad_bytes(start_idx, sizes["prev_just_check_epoch"], &serialized_state);
     start_idx += sizes["prev_just_check_epoch"] as usize;
-    let leaf_hash = hash(&prev_just_check_epoch);
+    let leaf_hash = hash(&prev_just_check_epoch, &sizes["prev_just_check_epoch"]);
     leaves.push(leaf_hash);
 
     let prev_just_check_root =
         pad_bytes(start_idx, sizes["prev_just_check_root"], &serialized_state);
     start_idx += sizes["prev_just_check_root"] as usize;
-    let leaf_hash = hash(&prev_just_check_root);
+    let leaf_hash = hash(&prev_just_check_root, &sizes["prev_just_check_root"]);
     leaves.push(leaf_hash);
 
     let curr_just_check_epoch =
         pad_bytes(start_idx, sizes["curr_just_check_epoch"], &serialized_state);
     start_idx += sizes["curr_just_check_epoch"] as usize;
-    let leaf_hash = hash(&curr_just_check_epoch);
+    let leaf_hash = hash(&curr_just_check_epoch, &sizes["curr_just_check_epoch"]);
     leaves.push(leaf_hash);
 
     let curr_just_check_root =
         pad_bytes(start_idx, sizes["curr_just_check_root"], &serialized_state);
     start_idx += sizes["curr_just_check_root"] as usize;
-    let leaf_hash = hash(&curr_just_check_root);
+    let leaf_hash = hash(&curr_just_check_root, &sizes["curr_just_check_root"]);
     leaves.push(leaf_hash);
 
     let finalized_check_epoch =
         pad_bytes(start_idx, sizes["finalized_check_epoch"], &serialized_state);
     start_idx += sizes["finalized_check_epoch"] as usize;
-    let leaf_hash = hash(&finalized_check_epoch);
+    let leaf_hash = hash(&finalized_check_epoch, &sizes["finalized_check_epoch"]);
     leaves.push(leaf_hash);
 
     let finalized_checkpoint_root = pad_bytes(
@@ -422,7 +419,10 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["finalized_checkpoint_root"] as usize;
-    let leaf_hash = hash(&finalized_checkpoint_root);
+    let leaf_hash = hash(
+        &finalized_checkpoint_root,
+        &sizes["finalized_checkpoint_root"],
+    );
     leaves.push(leaf_hash);
 
     let inactivity_scores = pad_bytes(
@@ -431,7 +431,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
-    let leaf_hash = hash(&inactivity_scores);
+    let leaf_hash = hash(&inactivity_scores, &sizes["inactivity_scores"]);
     leaves.push(leaf_hash);
 
     let curr_sync_comm_pubkeys = pad_bytes(
@@ -440,7 +440,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["curr_sync_comm_pubkeys"] as usize;
-    let leaf_hash = hash(&curr_sync_comm_pubkeys);
+    let leaf_hash = hash(&curr_sync_comm_pubkeys, &sizes["curr_sync_comm_pubkeys"]);
     leaves.push(leaf_hash);
 
     let curr_sync_comm_agg_pubkey = pad_bytes(
@@ -449,7 +449,10 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["curr_sync_comm_agg_pubkey"] as usize;
-    let leaf_hash = hash(&curr_sync_comm_agg_pubkey);
+    let leaf_hash = hash(
+        &curr_sync_comm_agg_pubkey,
+        &sizes["curr_sync_comm_agg_pubkey"],
+    );
     leaves.push(leaf_hash);
 
     let next_sync_comm_pubkeys = pad_bytes(
@@ -458,7 +461,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["next_sync_comm_pubkeys"] as usize;
-    let leaf_hash = hash(&next_sync_comm_pubkeys);
+    let leaf_hash = hash(&next_sync_comm_pubkeys, &sizes["next_sync_comm_pubkeys"]);
     leaves.push(leaf_hash);
 
     let next_sync_comm_agg_pubkey = pad_bytes(
@@ -466,7 +469,10 @@ pub fn calculate_leaves(
         sizes["next_sync_comm_agg_pubkey"],
         &serialized_state,
     );
-    let leaf_hash = hash(&next_sync_comm_agg_pubkey);
+    let leaf_hash = hash(
+        &next_sync_comm_agg_pubkey,
+        &sizes["next_sync_comm_agg_pubkey"],
+    );
     leaves.push(leaf_hash);
 
     // there should always be 37 fields, so 37 hashes

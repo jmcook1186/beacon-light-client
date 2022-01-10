@@ -2,11 +2,11 @@ use eth2::types::*;
 use merkle_proof::MerkleTree;
 extern crate hex;
 use crate::constants::{BYTES_PER_LENGTH_OFFSET, MAXIMUM_LENGTH, N_VARIABLE_LENGTH};
+use bit_vec::BitVec;
 use ethereum_types::H256;
 use ssz::Encode;
 use std::collections::HashMap;
 use std::convert::From;
-use bit_vec::BitVec;
 
 pub fn serialize_beacon_state(
     state: &BeaconState<MainnetEthSpec>,
@@ -135,16 +135,17 @@ pub fn serialize_beacon_state(
         current_epoch_participation.ssz_bytes_len(),
     );
 
-    let mut justification_bits_temp = BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
+    let mut justification_bits_temp =
+        BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
     justification_bits_temp.push(true); //add an additional "1" bit as an end marker
     let mut justification_bits: Vec<u8> = vec![];
-    for i in justification_bits_temp.to_bytes(){
+    for i in justification_bits_temp.to_bytes() {
         justification_bits.push(i);
     }
     assert!(justification_bits.len() < MAXIMUM_LENGTH);
     sizes.insert("justification_bits", justification_bits.ssz_bytes_len());
 
-    println!(" JUST BITS{:?}",state.justification_bits());
+    println!(" JUST BITS{:?}", state.justification_bits());
 
     let prev_just_check_epoch: Vec<u8> = state
         .previous_justified_checkpoint()
