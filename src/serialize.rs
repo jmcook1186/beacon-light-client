@@ -1,7 +1,7 @@
 use eth2::types::*;
 use merkle_proof::MerkleTree;
 extern crate hex;
-use crate::constants::{BYTES_PER_LENGTH_OFFSET, MAXIMUM_LENGTH, N_VARIABLE_LENGTH};
+use crate::constants::{BITS_PER_BYTE, BYTES_PER_LENGTH_OFFSET, MAXIMUM_LENGTH, N_VARIABLE_LENGTH};
 use bit_vec::BitVec;
 use ethereum_types::H256;
 use ssz::Encode;
@@ -14,6 +14,7 @@ pub fn serialize_beacon_state(
     // func takes state object as received from api endpoint and serializes it
     // according to the ssz specs
 
+    println!("*** SSZ SERIALIZING STATE OBJECT ***");
     // make hashmap of var lengths to pass to merklize
     let mut sizes = HashMap::new();
     let mut offsets = HashMap::new();
@@ -135,17 +136,18 @@ pub fn serialize_beacon_state(
         current_epoch_participation.ssz_bytes_len(),
     );
 
-    let mut justification_bits_temp =
-        BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
-    justification_bits_temp.push(true); //add an additional "1" bit as an end marker
-    let mut justification_bits: Vec<u8> = vec![];
-    for i in justification_bits_temp.to_bytes() {
-        justification_bits.push(i);
+    // JUSTIFICATION BITS
+    // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
+    println!("Adding length cap to justification bits");
+    let mut justification_bits = BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
+    justification_bits.push(true);
+    let mut justification_bits: Vec<u8> = justification_bits.to_bytes();
+    let pad = [0u8; 1];
+    while justification_bits.len() < 4 {
+        justification_bits.extend_from_slice(&pad)
     }
-    assert!(justification_bits.len() < MAXIMUM_LENGTH);
+    assert!(justification_bits.len() == 4);
     sizes.insert("justification_bits", justification_bits.ssz_bytes_len());
-
-    println!(" JUST BITS{:?}", state.justification_bits());
 
     let prev_just_check_epoch: Vec<u8> = state
         .previous_justified_checkpoint()
@@ -192,6 +194,11 @@ pub fn serialize_beacon_state(
     );
 
     let inactivity_scores: Vec<u8> = state.inactivity_scores().unwrap().as_ssz_bytes();
+    println!(
+        "INACTIVITY SCORES\n{:?}",
+        state.inactivity_scores().unwrap()
+    );
+
     assert!(inactivity_scores.len() < MAXIMUM_LENGTH);
     sizes.insert("inactivity_scores", inactivity_scores.ssz_bytes_len());
 
@@ -269,16 +276,12 @@ pub fn serialize_beacon_state(
         + curr_sync_comm_agg_pubkey.len()
         + next_sync_comm_pubkeys.len()
         + next_sync_comm_agg_pubkey.len()
-        + (BYTES_PER_LENGTH_OFFSET * N_VARIABLE_LENGTH);
-
-    sizes.insert("fixed_parts", byte_len_fixed_parts);
+        + justification_bits.len()
+        + (BYTES_PER_LENGTH_OFFSET * (N_VARIABLE_LENGTH));
 
     // CALCULATE VARIABLE LENGTH OFFSETS
     // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
-    // (see LH ssz/encode.rs encode_length() func for alternative implementation)
-    // is trimming the last 4 bytes off the offset ok? could there be a scenario
-    // where the offset is represented in > 4bytes and the trim leads to information loss?
-    // unlikely - max val in 4bytes is 4,294,967,295.
+
     let historical_roots_offset: usize = byte_len_fixed_parts;
     offsets.insert("historical_roots", historical_roots_offset);
     let historical_roots_offset: [u8; 8] = historical_roots_offset.to_le_bytes();
@@ -336,26 +339,13 @@ pub fn serialize_beacon_state(
         current_epoch_participation_offset[0..4].to_vec();
 
     // // offset starts after previous_epoch
-    let justification_bits_offset: usize = byte_len_fixed_parts
-        + historical_roots.len()
-        + eth1_data_votes.len()
-        + validators.len()
-        + balances.len()
-        + previous_epoch_participation.len()
-        + current_epoch_participation.len();
-    offsets.insert("justification_bits", justification_bits_offset);
-    let justification_bits_offset: [u8; 8] = justification_bits_offset.to_le_bytes();
-    let justification_bits_offset: Vec<u8> = justification_bits_offset[0..4].to_vec();
-
-    // // offset starts after previous_epoch
     let inactivity_scores_offset: usize = byte_len_fixed_parts
         + historical_roots.len()
         + eth1_data_votes.len()
         + validators.len()
         + balances.len()
         + previous_epoch_participation.len()
-        + current_epoch_participation.len()
-        + justification_bits.len();
+        + current_epoch_participation.len();
     offsets.insert("inactivity_scores", inactivity_scores_offset);
     let inactivity_scores_offset: [u8; 8] = inactivity_scores_offset.to_le_bytes();
     let inactivity_scores_offset: Vec<u8> = inactivity_scores_offset[0..4].to_vec();
@@ -366,7 +356,6 @@ pub fn serialize_beacon_state(
         eth1_data_votes_offset.len(),
         validators_offset.len(),
         previous_epoch_participation_offset.len(),
-        justification_bits_offset.len(),
         current_epoch_participation_offset.len(),
         balances_offset.len(),
         inactivity_scores_offset.len(),
@@ -375,6 +364,10 @@ pub fn serialize_beacon_state(
     {
         assert_eq!(i.to_owned(), 4 as usize);
     }
+
+    // insert total size into size hashmap
+    // also assert that the total serialized size equals the last offset + last var size
+    sizes.insert("fixed_parts", byte_len_fixed_parts);
 
     // BUILD SERIALIZED STATE OBJECT
     // interleave offsets with fixed-length data then
@@ -411,7 +404,7 @@ pub fn serialize_beacon_state(
         slashings,
         previous_epoch_participation_offset,
         current_epoch_participation_offset,
-        justification_bits_offset,
+        justification_bits,
         prev_just_check_epoch,
         prev_just_check_root,
         curr_just_check_epoch,
@@ -429,7 +422,6 @@ pub fn serialize_beacon_state(
         balances,
         previous_epoch_participation,
         current_epoch_participation,
-        justification_bits,
         inactivity_scores,
     ] {
         for i in var {
@@ -437,24 +429,30 @@ pub fn serialize_beacon_state(
         }
     }
 
+    sizes.insert("total_length", serialized_state.len());
+    assert!(serialized_state.len() < MAXIMUM_LENGTH);
+
+    assert_eq!(
+        sizes["total_length"],
+        sizes["inactivity_scores"] + offsets["inactivity_scores"]
+    );
+
+    println!(
+        "ASSUMED SIZE: {:?}",
+        offsets["inactivity_scores"] + sizes["inactivity_scores"]
+    );
+
     // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
     // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
-    // println!(
-    //     "byte length of ssz serialized state object: {:?}",
-    //     serialized_state.len()
-    // );
-    // println!(
-    //     "\nimplied byte length of variable length vars: {:?}",
-    //     serialized_state.len() - byte_len_fixed_parts
-    // );
+
     println!("\nSIZE (BYTES) OF EACH VAR:\n");
     for (key, value) in sizes.iter() {
         println!("{:?}: {:?}", key, value);
     }
-    // println!("\nVARIABLE LENGTH OFFSETS:\n");
-    // for (key, value) in offsets.iter() {
-    //     println!("{:?}: {:?}", key, value);
-    // }
+    println!("\nVARIABLE LENGTH OFFSETS:\n");
+    for (key, value) in offsets.iter() {
+        println!("{:?}: {:?}", key, value);
+    }
 
     return (serialized_state, sizes, offsets);
 }

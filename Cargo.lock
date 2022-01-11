@@ -3287,6 +3287,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.0",
  "bit-vec",
+ "bitvec 0.20.4",
  "bytes 1.1.0",
  "clap 3.0.0-beta.5",
  "eth2",

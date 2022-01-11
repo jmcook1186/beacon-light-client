@@ -1,14 +1,14 @@
 extern crate hex;
+use bit_vec::BitVec;
+use bitvec::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use bit_vec::BitVec;
 
 pub fn calculate_leaves(
     serialized_state: &Vec<u8>,
     sizes: &HashMap<&str, usize>,
     offsets: &HashMap<&str, usize>,
 ) -> Vec<String> {
-
     // sha256 hashes vecs of bytes from serialized object
     // mixes in length data as per spec
 
@@ -16,12 +16,11 @@ pub fn calculate_leaves(
     let mut start_idx: usize = 0;
 
     pub fn hash(leaf: &Vec<u8>, length: &usize) -> String {
-
         // we need a bytes representation (length 32) of
         // the var length to "mix_in_length" later
         let length_bytes = length.to_le_bytes();
         let length_bytes = pad_to_32(&length_bytes, &length_bytes.len());
-        
+
         assert_eq!(length_bytes.len(), 32);
         assert!(leaf.len() >= 32);
         assert_eq!(leaf.len() % 32, 0);
@@ -43,6 +42,7 @@ pub fn calculate_leaves(
 
             let root: String;
             let mut chunks = chunked_leaf.clone();
+
             while chunks.len() != 1 {
                 // while there are multiple nodes to hash
                 let mut temp: Vec<Vec<u8>> = vec![];
@@ -76,8 +76,18 @@ pub fn calculate_leaves(
     pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
         // start and stop idxs for vars in ssz serialized object
         let stop = start + length;
-        assert!(stop < serialized_state.len(), "stop exceeds end of ssz obj");
         let var_as_bytes = &serialized_state[start..stop];
+
+        //check lengths are consistent
+        assert!(stop - start == length);
+        assert!(
+            stop <= serialized_state.len(),
+            "stop {:?} exceeds end of ssz obj",
+            stop
+        );
+        assert_eq!(length, stop - start);
+        assert_eq!(length, var_as_bytes.len());
+        println!("{:?}", start);
 
         if length == 32 {
             assert_eq!(var_as_bytes.len(), 32 as usize);
@@ -214,6 +224,7 @@ pub fn calculate_leaves(
     // APPLY PAD AND HASH FUNCS TO EACH VAR
     let genesis_time = pad_bytes(start_idx, sizes["genesis_time"], &serialized_state);
     start_idx += sizes["genesis_time"] as usize;
+
     let leaf_hash = hash(&genesis_time, &sizes["genesis_time"]);
     leaves.push(leaf_hash);
 
@@ -223,62 +234,74 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["genesis_validators_root"] as usize;
+
     let leaf_hash = hash(&genesis_validators_root, &sizes["genesis_validators_root"]);
     leaves.push(leaf_hash);
 
     let slot = pad_bytes(start_idx, sizes["slot"], &serialized_state);
     start_idx += sizes["slot"] as usize;
+
     let leaf_hash = hash(&slot, &sizes["slot"]);
     leaves.push(leaf_hash);
 
     let fork_prev_ver = pad_bytes(start_idx, sizes["fork_prev_ver"], &serialized_state);
     start_idx += sizes["fork_prev_ver"] as usize;
+
     let leaf_hash = hash(&fork_prev_ver, &sizes["slot"]);
     leaves.push(leaf_hash);
 
     let fork_curr_ver = pad_bytes(start_idx, sizes["fork_curr_ver"], &serialized_state);
     start_idx += sizes["fork_curr_ver"] as usize;
+
     let leaf_hash = hash(&fork_curr_ver, &sizes["fork_curr_ver"]);
     leaves.push(leaf_hash);
 
     let fork_epoch = pad_bytes(start_idx, sizes["fork_epoch"], &serialized_state);
     start_idx += sizes["fork_epoch"] as usize;
+
     let leaf_hash = hash(&fork_epoch, &sizes["fork_epoch"]);
     leaves.push(leaf_hash);
 
     let header_slot = pad_bytes(start_idx, sizes["header_slot"], &serialized_state);
     start_idx += sizes["header_slot"] as usize;
+
     let leaf_hash = hash(&header_slot, &sizes["header_slot"]);
     leaves.push(leaf_hash);
 
     let header_proposer_index =
         pad_bytes(start_idx, sizes["header_proposer_index"], &serialized_state);
     start_idx += sizes["header_proposer_index"] as usize;
+
     let leaf_hash = hash(&header_proposer_index, &sizes["header_proposer_index"]);
     leaves.push(leaf_hash);
 
     let header_parent_root = pad_bytes(start_idx, sizes["header_parent_root"], &serialized_state);
     start_idx += sizes["header_parent_root"] as usize;
+
     let leaf_hash = hash(&header_parent_root, &sizes["header_parent_root"]);
     leaves.push(leaf_hash);
 
     let header_state_root = pad_bytes(start_idx, sizes["header_state_root"], &serialized_state);
     start_idx += sizes["header_state_root"] as usize;
+
     let leaf_hash = hash(&header_state_root, &sizes["header_state_root"]);
     leaves.push(leaf_hash);
 
     let header_body_root = pad_bytes(start_idx, sizes["header_body_root"], &serialized_state);
     start_idx += sizes["header_body_root"] as usize;
+
     let leaf_hash = hash(&header_body_root, &sizes["header_body_root"]);
     leaves.push(leaf_hash);
 
     let block_roots = pad_bytes(start_idx, sizes["block_roots"], &serialized_state);
     start_idx += sizes["block_roots"] as usize;
+
     let leaf_hash = hash(&block_roots, &sizes["block_roots"]);
     leaves.push(leaf_hash);
 
     let state_roots = pad_bytes(start_idx, sizes["state_roots"], &serialized_state);
     start_idx += sizes["state_roots"] as usize;
+
     let leaf_hash = hash(&state_roots, &sizes["state_roots"]);
     leaves.push(leaf_hash);
 
@@ -288,6 +311,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(&historical_roots, &sizes["historical_roots"]);
     leaves.push(leaf_hash);
 
@@ -302,12 +326,14 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["eth1_data_deposit_count"] as usize;
+
     let leaf_hash = hash(&eth1_data_deposit_count, &sizes["eth1_data_deposit_count"]);
     leaves.push(leaf_hash);
 
     let eth1_data_block_hash =
         pad_bytes(start_idx, sizes["eth1_data_block_hash"], &serialized_state);
     start_idx += sizes["eth1_data_block_hash"] as usize;
+
     let leaf_hash = hash(&eth1_data_block_hash, &sizes["eth1_data_block_hash"]);
     leaves.push(leaf_hash);
 
@@ -317,11 +343,13 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(&eth1_data_votes, &sizes["eth1_data_votes"]);
     leaves.push(leaf_hash);
 
     let eth1_deposit_index = pad_bytes(start_idx, sizes["eth1_deposit_index"], &serialized_state);
     start_idx += sizes["eth1_deposit_index"] as usize;
+
     let leaf_hash = hash(&eth1_deposit_index, &sizes["eth1_deposit_index"]);
     leaves.push(leaf_hash);
 
@@ -331,21 +359,25 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(&validators, &sizes["validators"]);
     leaves.push(leaf_hash);
 
     let balances = pad_bytes(offsets["balances"], sizes["balances"], &serialized_state);
     start_idx += 4;
+
     let leaf_hash = hash(&balances, &sizes["balances"]);
     leaves.push(leaf_hash);
 
     let randao_mixes = pad_bytes(start_idx, sizes["randao_mixes"], &serialized_state);
     start_idx += sizes["randao_mixes"] as usize;
+
     let leaf_hash = hash(&randao_mixes, &sizes["randao_mixes"]);
     leaves.push(leaf_hash);
 
     let slashings = pad_bytes(start_idx, sizes["slashings"], &serialized_state);
     start_idx += sizes["slashings"] as usize;
+
     let leaf_hash = hash(&slashings, &sizes["slashings"]);
     leaves.push(leaf_hash);
 
@@ -355,6 +387,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(
         &previous_epoch_participation,
         &sizes["previous_epoch_participation"],
@@ -367,49 +400,52 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(
         &current_epoch_participation,
         &sizes["current_epoch_participation"],
     );
     leaves.push(leaf_hash);
 
-    let justification_bits = pad_bytes(
-        offsets["justification_bits"],
-        sizes["justification_bits"],
-        &serialized_state,
-    );
+    let justification_bits = pad_bytes(start_idx, sizes["justification_bits"], &serialized_state);
+    start_idx += sizes["justification_bits"] as usize;
 
-    start_idx += 4;
+    let justification_bits = remove_cap_from_justification_bits(&justification_bits);
     let leaf_hash = hash(&justification_bits, &sizes["justification_bits"]);
     leaves.push(leaf_hash);
 
     let prev_just_check_epoch =
         pad_bytes(start_idx, sizes["prev_just_check_epoch"], &serialized_state);
     start_idx += sizes["prev_just_check_epoch"] as usize;
+
     let leaf_hash = hash(&prev_just_check_epoch, &sizes["prev_just_check_epoch"]);
     leaves.push(leaf_hash);
 
     let prev_just_check_root =
         pad_bytes(start_idx, sizes["prev_just_check_root"], &serialized_state);
     start_idx += sizes["prev_just_check_root"] as usize;
+
     let leaf_hash = hash(&prev_just_check_root, &sizes["prev_just_check_root"]);
     leaves.push(leaf_hash);
 
     let curr_just_check_epoch =
         pad_bytes(start_idx, sizes["curr_just_check_epoch"], &serialized_state);
     start_idx += sizes["curr_just_check_epoch"] as usize;
+
     let leaf_hash = hash(&curr_just_check_epoch, &sizes["curr_just_check_epoch"]);
     leaves.push(leaf_hash);
 
     let curr_just_check_root =
         pad_bytes(start_idx, sizes["curr_just_check_root"], &serialized_state);
     start_idx += sizes["curr_just_check_root"] as usize;
+
     let leaf_hash = hash(&curr_just_check_root, &sizes["curr_just_check_root"]);
     leaves.push(leaf_hash);
 
     let finalized_check_epoch =
         pad_bytes(start_idx, sizes["finalized_check_epoch"], &serialized_state);
     start_idx += sizes["finalized_check_epoch"] as usize;
+
     let leaf_hash = hash(&finalized_check_epoch, &sizes["finalized_check_epoch"]);
     leaves.push(leaf_hash);
 
@@ -419,6 +455,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["finalized_checkpoint_root"] as usize;
+
     let leaf_hash = hash(
         &finalized_checkpoint_root,
         &sizes["finalized_checkpoint_root"],
@@ -431,6 +468,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += 4;
+
     let leaf_hash = hash(&inactivity_scores, &sizes["inactivity_scores"]);
     leaves.push(leaf_hash);
 
@@ -440,6 +478,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["curr_sync_comm_pubkeys"] as usize;
+
     let leaf_hash = hash(&curr_sync_comm_pubkeys, &sizes["curr_sync_comm_pubkeys"]);
     leaves.push(leaf_hash);
 
@@ -449,6 +488,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["curr_sync_comm_agg_pubkey"] as usize;
+
     let leaf_hash = hash(
         &curr_sync_comm_agg_pubkey,
         &sizes["curr_sync_comm_agg_pubkey"],
@@ -461,6 +501,7 @@ pub fn calculate_leaves(
         &serialized_state,
     );
     start_idx += sizes["next_sync_comm_pubkeys"] as usize;
+
     let leaf_hash = hash(&next_sync_comm_pubkeys, &sizes["next_sync_comm_pubkeys"]);
     leaves.push(leaf_hash);
 
@@ -469,6 +510,7 @@ pub fn calculate_leaves(
         sizes["next_sync_comm_agg_pubkey"],
         &serialized_state,
     );
+    start_idx += sizes["next_sync_comm_agg_pubkey"] as usize;
     let leaf_hash = hash(
         &next_sync_comm_agg_pubkey,
         &sizes["next_sync_comm_agg_pubkey"],
@@ -476,7 +518,13 @@ pub fn calculate_leaves(
     leaves.push(leaf_hash);
 
     // there should always be 37 fields, so 37 hashes
+    // the start_idx should, after tracking the fixed-length vars
+    // equal the fixed-parts length calculated during serialization
     assert_eq!(leaves.len(), 37);
+    assert_eq!(
+        start_idx, sizes["fixed_parts"],
+        "error: serialization and deserialization have not syncd correctly"
+    );
 
     // OPTIONAL PRINT EACH LEAF HASH (ROOTS FOR MULTICHUNK VARS)
     // println!("\nHASHES FOR EACH FIELD IN STATE:\n");
@@ -511,6 +559,7 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
 
     // there should be 64 leaves, and the length
     // of erach leaf should eb 64 chars
+
     assert!(padded_leaves.len() == 64);
     assert!(padded_leaves[0].len() == 64);
 
@@ -528,14 +577,18 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
     // until there is just one hash (==root)
     let mut layer: usize = 6; //just for logging to console
     println!("\n***BUILDING MERKLE TREE\n");
-    println!("\n*** NOW HASHING LEAVES ***\n");
-
+    println!("initial n leaves = {:?}", leaves.len());
+    println!(
+        "adding {:?} zero chunks to give {:?} leaves\n",
+        leaves_to_add,
+        leaves.len().next_power_of_two()
+    );
     while leaves_to_hash.len() > 1 {
         let mut new_nodes: Vec<String> = vec![];
-        println!("\nHASHING IN LAYER {:?}\n", layer);
+        //println!("\nHASHING IN LAYER {:?}\n", layer);
         // count through leaves in steps of 2
         for i in (0..leaves_to_hash.len()).step_by(2) {
-            println!("hashing leaves {:?} with {:?}", i, i + 1);
+            //println!("hashing leaves {:?} with {:?}", i, i + 1);
             let mut hasher = Sha256::new();
             hasher.update(&leaves_to_hash[i]);
             hasher.update(&leaves_to_hash[i + 1]);
@@ -547,18 +600,42 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
         leaves_to_hash = new_nodes.clone();
         tree.push(new_nodes);
     }
-    println!("\nFINISHED BUILDING MERKLE TREE");
-    println!("\n*** MERKLE TREE PROPERTIES ***\n");
-    println!("N LAYERS IN TREE: {:?}\n", tree.len());
-    println!("Lengths should decrease in powers of 2 from leaves to root");
-    println!("N LEAVES LAYER 7: {:?}", tree[0].len());
-    println!("N NODES LAYER 6: {:?}", tree[1].len());
-    println!("N NODES LAYER 5: {:?}", tree[2].len());
-    println!("N NODES LAYER 4: {:?}", tree[3].len());
-    println!("N NODES LAYER 3: {:?}", tree[4].len());
-    println!("N NODES LAYER 2: {:?}", tree[5].len());
-    println!("N NODES LAYER 1: {:?}", tree[6].len());
+    // println!("\nFINISHED BUILDING MERKLE TREE");
+    // println!("\n*** MERKLE TREE PROPERTIES ***\n");
+    // println!("N LAYERS IN TREE: {:?}\n", tree.len());
+    // println!("Lengths should decrease in powers of 2 from leaves to root");
+    // println!("N LEAVES LAYER 7: {:?}", tree[0].len());
+    // println!("N NODES LAYER 6: {:?}", tree[1].len());
+    // println!("N NODES LAYER 5: {:?}", tree[2].len());
+    // println!("N NODES LAYER 4: {:?}", tree[3].len());
+    // println!("N NODES LAYER 3: {:?}", tree[4].len());
+    // println!("N NODES LAYER 2: {:?}", tree[5].len());
+    // println!("N NODES LAYER 1: {:?}", tree[6].len());
     println!("STATE_ROOT: {:?}\n", tree[6]);
 
     return tree;
+}
+
+pub fn remove_cap_from_justification_bits(justification_bits: &Vec<u8>) -> Vec<u8> {
+    
+    let mut bits: BitVec = BitVec::from_bytes(&justification_bits);
+
+    let mut counter: usize = 0;
+
+    for i in (0..bits.len()).rev() {
+        if bits[i] == true {
+            println!("erasing length cap from justification bits idx:{:?}", i);
+            bits.set(i, false);
+            break;
+        } else if i == 0 && bits[i] == false {
+            bits.set(i, true);
+            // if we get to the end of the bits
+            // without finding a 1, exit loops
+            break;
+        }
+    }
+
+    let bytes: Vec<u8> = bits.to_bytes();
+    println!("{:?}", bytes);
+    return bytes;
 }
