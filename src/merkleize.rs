@@ -7,6 +7,7 @@ use std::collections::HashMap;
 // control flow here is:
 // 1) calculate leaves() (returns vec of root hashes, one per leaf)
 //       calls out to pad_bytes (N chunks of 32 bytes where N == power of 2)
+//           if var is justification_bits the length cap is removed first
 //           calls out to pad_to_32 (if single chunk needs padding)
 //           calls out to pad_to_multiple_of_32 (if multi-chunk var needs padding)
 //           calls out to chunks_to_power_of_two (if N chunks is not power of 2)
@@ -69,7 +70,19 @@ pub fn calculate_leaves(
     ];
 
     for key in keys.iter() {
-        let var = pad_bytes(start_idx, sizes[key], &serialized_state);
+
+        // justification bits requires
+        // removal of it's length cap before
+        // padding. We toggle this with
+        // bit_flag
+        let mut bit_flag = false;
+        if key == &"justification_bits"{
+            bit_flag = true;
+        }else{
+            bit_flag = false;
+        }
+              
+        let var = pad_bytes(start_idx, sizes[key], &serialized_state, &bit_flag);
         if offsets.contains_key(key) {
             start_idx += 4;
         } else {
@@ -226,11 +239,15 @@ pub fn mix_in_length_data(root: &str, length: &usize) -> String {
     root
 }
 
-pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec<u8> {
+pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>, bit_flag: &bool) -> Vec<u8> {
     // start and stop idxs for vars in ssz serialized object
     let stop = start + length;
     let var_as_bytes = &serialized_state[start..stop];
 
+    // if the var is justification_bits then remove the end cap before continuing
+    if *bit_flag{
+        let var_as_bytes = remove_cap_from_justification_bits(&var_as_bytes.to_vec());
+    }
     //check lengths are consistent
     assert!(stop - start == length);
     assert!(

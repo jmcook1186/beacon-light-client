@@ -1,4 +1,4 @@
-# Lighthouse Light Client
+# Ethereum Beacon Chain Light Client
 
 *** WARNING This light client is still in very early development! ***
 

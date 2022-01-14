@@ -33,5 +33,5 @@ fn main() {
     let leaves = merkleize::calculate_leaves(&serialized_state, &sizes, &offsets);
     let tree = merkleize::build_tree(leaves);
 
-    println!("downloaded state root: {:?}\n", block.state_root());
+    println!("DOWNLOADED STATE ROOT: {:?}\n", block.state_root());
 }

@@ -138,15 +138,27 @@ pub fn serialize_beacon_state(
 
     // JUSTIFICATION BITS
     // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
-    println!("Adding length cap to justification bits");
     let mut justification_bits = BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
+    assert!(justification_bits.len() % 4 == 0);
+    println!("Adding length cap to justification bits");
+    println!(
+        "\njustification bits without length cap: \n{:?}",
+        justification_bits
+    );
     justification_bits.push(true);
+    println!(
+        "\njustification bits with length cap: \n{:?}\n",
+        justification_bits
+    );
     let mut justification_bits: Vec<u8> = justification_bits.to_bytes();
     let pad = [0u8; 1];
     while justification_bits.len() < 4 {
         justification_bits.extend_from_slice(&pad)
     }
-    assert!(justification_bits.len() == 4);
+
+    // justification bit length should be 4 bytes
+    // zero vector is illegal (should never occur here bc of length cap)
+    assert!(justification_bits.iter().sum::<u8>() > 0);
     sizes.insert("justification_bits", justification_bits.ssz_bytes_len());
 
     let prev_just_check_epoch: Vec<u8> = state
@@ -194,11 +206,6 @@ pub fn serialize_beacon_state(
     );
 
     let inactivity_scores: Vec<u8> = state.inactivity_scores().unwrap().as_ssz_bytes();
-    println!(
-        "INACTIVITY SCORES\n{:?}",
-        state.inactivity_scores().unwrap()
-    );
-
     assert!(inactivity_scores.len() < MAXIMUM_LENGTH);
     sizes.insert("inactivity_scores", inactivity_scores.ssz_bytes_len());
 
@@ -437,19 +444,14 @@ pub fn serialize_beacon_state(
         sizes["inactivity_scores"] + offsets["inactivity_scores"]
     );
 
-    println!(
-        "ASSUMED SIZE: {:?}",
-        offsets["inactivity_scores"] + sizes["inactivity_scores"]
-    );
-
     // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
     // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
 
-    println!("\nSIZE (BYTES) OF EACH VAR:\n");
+    println!("\nSIZE (IN BYTES) OF EACH VAR:\n");
     for (key, value) in sizes.iter() {
         println!("{:?}: {:?}", key, value);
     }
-    println!("\nVARIABLE LENGTH OFFSETS:\n");
+    println!("\nVARIABLE-LENGTH VAR OFFSETS:\n");
     for (key, value) in offsets.iter() {
         println!("{:?}: {:?}", key, value);
     }
