@@ -4,24 +4,18 @@ use bitvec::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-"""
-control flow here is:assert_eq!
+// control flow here is:
+// 1) calculate leaves() (returns vec of root hashes, one per leaf)
+//       calls out to pad_bytes (N chunks of 32 bytes where N == power of 2)
+//           calls out to pad_to_32 (if single chunk needs padding)
+//           calls out to pad_to_multiple_of_32 (if multi-chunk var needs padding)
+//           calls out to chunks_to_power_of_two (if N chunks is not power of 2)
+//       calls out to get_hash_root() (returns root hash of single or multichunk var)
+//       calls out to mix_in_length_data() (hashes root with le_bytes representation of the var length)
+// 2) build_tree() (returns merkle tree as Vec<Vec<String>> where vec[i+1].len() = vec[i].len()/2)
 
-1) calculate leaves() (returns vec of root hashes, one per leaf)
-      calls out to pad_bytes (N chunks of 32 bytes where N == power of 2)
-          calls out to pad_to_32 (if single chunk needs padding)
-          calls out to pad_to_multiple_of_32 (if multi-chunk var needs padding)
-          calls out to chunks_to_power_of_two (if N chunks is not power of 2)
-      calls out to get_hash_root() (returns root hash of single or multichunk var)
-      calls out to mix_in_length_data() (hashes root with le_bytes representation of the var length)
-2) build_tree() (returns merkle tree as Vec<Vec<String>> where vec[i+1].len() = vec[i].len()/2)
-
-calling both funcs in sequence returns a merkle tree representation of beacon_state where
-tree[6] is the state root.
-
-"""
-
-
+// 1) and 2) called in sequence returns a merkle tree representation of beacon_state where
+// tree[6] is the state root.
 
 pub fn calculate_leaves(
     serialized_state: &Vec<u8>,
@@ -87,8 +81,7 @@ pub fn calculate_leaves(
         leaves.push(root);
     }
 
-        return leaves
-    
+    return leaves;
 }
 
 pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
@@ -163,10 +156,7 @@ pub fn build_tree(leaves: Vec<String>) -> Vec<Vec<String>> {
     return tree;
 }
 
-
-
 pub fn get_hash_root(leaf: &Vec<u8>) -> String {
-    
     assert!(leaf.len() >= 32);
     assert_eq!(leaf.len() % 32, 0);
 
@@ -178,7 +168,7 @@ pub fn get_hash_root(leaf: &Vec<u8>) -> String {
         return hex::encode(result);
     } else {
         // here we deal with multiple chunks
-        // by recursively hashing pairs 
+        // by recursively hashing pairs
         // and returning the root
 
         let chunked_leaf: Vec<Vec<u8>> = leaf.chunks(32).map(|s| s.into()).collect();
@@ -191,7 +181,7 @@ pub fn get_hash_root(leaf: &Vec<u8>) -> String {
 
         // iterate through pairs of chunks
         // creating new vec of parent nodes
-        // hash those together and repeat until 
+        // hash those together and repeat until
         // one root left
         while chunks.len() != 1 {
             // while there are multiple nodes to hash
@@ -255,7 +245,6 @@ pub fn pad_bytes(start: usize, length: usize, serialized_state: &Vec<u8>) -> Vec
         assert_eq!(var_as_bytes.len(), 32 as usize);
         let padded_var: Vec<u8> = var_as_bytes.to_vec();
         return padded_var;
-
     } else if length < 32 {
         assert!(var_as_bytes.len() < 32);
         let padded_var: Vec<u8> = pad_to_32(var_as_bytes, &length);
@@ -382,7 +371,6 @@ pub fn pad_chunks_to_power2(var: &[u8]) -> Vec<u8> {
         return padded_var;
     }
 }
-
 
 pub fn remove_cap_from_justification_bits(justification_bits: &Vec<u8>) -> Vec<u8> {
     let mut bits: BitVec = BitVec::from_bytes(&justification_bits);
