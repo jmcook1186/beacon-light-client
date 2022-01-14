@@ -75,39 +75,39 @@ pub fn get_header(api_key: &str, state_id: &str, endpoint_prefix: &str) -> Block
     return header;
 }
 
-pub fn get_update(
-    state: BeaconState<MainnetEthSpec>,
-    block: SignedBeaconBlock<MainnetEthSpec>,
-    finality_header: BlockHeaderData,
-) -> LightClientUpdate {
-    // sync_aggregate comes straight from the block body - this is the source of sync_committee_bits
-    let aggregate: SyncAggregate<MainnetEthSpec> =
-        block.message().body().sync_aggregate().unwrap().to_owned();
+// pub fn get_update(
+//     state: BeaconState<MainnetEthSpec>,
+//     block: SignedBeaconBlock<MainnetEthSpec>,
+//     finality_header: BlockHeaderData,
+// ) -> LightClientUpdate {
+//     // sync_aggregate comes straight from the block body - this is the source of sync_committee_bits
+//     let aggregate: SyncAggregate<MainnetEthSpec> =
+//         block.message().body().sync_aggregate().unwrap().to_owned();
 
-    // serialize the beacon_state and chunk it into 32 byte leaves.
-    // merklize the chunked vector, return the merkle tree and the depth of the tree
-    let leaves: Vec<H256> = serialize::to_h256_chunks(&state);
-    let (tree, tree_depth) = serialize::get_merkle_tree(&leaves);
+//     // serialize the beacon_state and chunk it into 32 byte leaves.
+//     // merklize the chunked vector, return the merkle tree and the depth of the tree
+//     let leaves: Vec<H256> = serialize::to_h256_chunks(&state);
+//     let (tree, tree_depth) = serialize::get_merkle_tree(&leaves);
 
-    // get branches (vectors of hashes at nodes connecting leaf to root)
-    let sync_comm_branch: Vec<H256> = serialize::get_branch(
-        &tree,
-        NEXT_SYNC_COMMITTEE_INDEX as usize,
-        tree_depth as usize,
-    );
-    let finality_branch: Vec<H256> =
-        serialize::get_branch(&tree, FINALIZED_ROOT_INDEX as usize, tree_depth as usize);
+//     // get branches (vectors of hashes at nodes connecting leaf to root)
+//     let sync_comm_branch: Vec<H256> = serialize::get_branch(
+//         &tree,
+//         NEXT_SYNC_COMMITTEE_INDEX as usize,
+//         tree_depth as usize,
+//     );
+//     let finality_branch: Vec<H256> =
+//         serialize::get_branch(&tree, FINALIZED_ROOT_INDEX as usize, tree_depth as usize);
 
-    // build update object
-    let update = LightClientUpdate {
-        header: state.latest_block_header().to_owned(),
-        next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
-        next_sync_committee_branch: sync_comm_branch,
-        finality_header: finality_header,
-        finality_branch: finality_branch,
-        sync_committee_bits: aggregate.sync_committee_bits,
-        fork_version: state.fork().current_version,
-    };
+//     // build update object
+//     let update = LightClientUpdate {
+//         header: state.latest_block_header().to_owned(),
+//         next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
+//         next_sync_committee_branch: sync_comm_branch,
+//         finality_header: finality_header,
+//         finality_branch: finality_branch,
+//         sync_committee_bits: aggregate.sync_committee_bits,
+//         fork_version: state.fork().current_version,
+//     };
 
-    return update;
-}
+//     return update;
+// }

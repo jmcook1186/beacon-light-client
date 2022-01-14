@@ -14,367 +14,496 @@ pub fn serialize_beacon_state(
     // func takes state object as received from api endpoint and serializes it
     // according to the ssz specs
 
-    println!("*** SSZ SERIALIZING STATE OBJECT ***");
-    // make hashmap of var lengths to pass to merklize
+    let mut fixed_parts: Vec<u8> = vec![];
+    let mut variable_parts: Vec<u8> = vec![];
     let mut sizes = HashMap::new();
     let mut offsets = HashMap::new();
 
-    let genesis_time = state.genesis_time().as_ssz_bytes();
-    assert!(genesis_time.len() < MAXIMUM_LENGTH);
-    sizes.insert("genesis_time", genesis_time.ssz_bytes_len());
+    println!("*** SSZ SERIALIZING STATE OBJECT ***");
+    // make hashmap of var lengths to pass to merklize
 
-    let genesis_validators_root = state.genesis_validators_root().as_ssz_bytes();
-    assert!(genesis_validators_root.len() < MAXIMUM_LENGTH);
+    for i in state.genesis_time().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "genesis_time",
+        state.genesis_time().as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state.genesis_validators_root().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "genesis_validators_root",
-        genesis_validators_root.ssz_bytes_len(),
+        state
+            .genesis_validators_root()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let slot = state.slot().as_ssz_bytes();
-    assert!(slot.len() < MAXIMUM_LENGTH);
-    sizes.insert("slot", slot.ssz_bytes_len());
+    for i in state.slot().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert("slot", state.slot().as_ssz_bytes().ssz_bytes_len());
 
-    let fork_prev_ver: Vec<u8> = state.fork().previous_version.as_ssz_bytes();
-    assert!(fork_prev_ver.len() < MAXIMUM_LENGTH);
-    sizes.insert("fork_prev_ver", fork_prev_ver.ssz_bytes_len());
+    for i in state.fork().previous_version.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "fork_prev_ver",
+        state.fork().previous_version.as_ssz_bytes().ssz_bytes_len(),
+    );
 
-    let fork_curr_ver: Vec<u8> = state.fork().current_version.as_ssz_bytes();
-    assert!(fork_curr_ver.len() < MAXIMUM_LENGTH);
-    sizes.insert("fork_curr_ver", fork_curr_ver.ssz_bytes_len());
+    for i in state.fork().current_version.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "fork_curr_ver",
+        state.fork().current_version.as_ssz_bytes().ssz_bytes_len(),
+    );
 
-    let fork_epoch: Vec<u8> = state.fork().epoch.as_ssz_bytes();
-    assert!(fork_epoch.len() < MAXIMUM_LENGTH);
-    sizes.insert("fork_epoch", fork_epoch.ssz_bytes_len());
+    for i in state.fork().epoch.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "fork_epoch",
+        state.fork().epoch.as_ssz_bytes().ssz_bytes_len(),
+    );
 
-    let header_slot: Vec<u8> = state.latest_block_header().slot.as_ssz_bytes();
-    assert!(header_slot.len() < MAXIMUM_LENGTH);
-    sizes.insert("header_slot", header_slot.ssz_bytes_len());
+    for i in state.latest_block_header().slot.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "header_slot",
+        state
+            .latest_block_header()
+            .slot
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
 
-    let header_proposer_index: Vec<u8> = state.latest_block_header().proposer_index.as_ssz_bytes();
-    assert!(header_proposer_index.len() < MAXIMUM_LENGTH);
+    for i in state
+        .latest_block_header()
+        .proposer_index
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "header_proposer_index",
-        header_proposer_index.ssz_bytes_len(),
+        state
+            .latest_block_header()
+            .proposer_index
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let header_parent_root: Vec<u8> = state.latest_block_header().parent_root.as_ssz_bytes();
-    assert!(header_parent_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("header_parent_root", header_parent_root.ssz_bytes_len());
-
-    let header_state_root: Vec<u8> = state.latest_block_header().state_root.as_ssz_bytes();
-    assert!(header_state_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("header_state_root", header_state_root.ssz_bytes_len());
-
-    let header_body_root: Vec<u8> = state.latest_block_header().body_root.as_ssz_bytes();
-    assert!(header_body_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("header_body_root", header_body_root.ssz_bytes_len());
-
-    let block_roots: Vec<u8> = state.block_roots().as_ssz_bytes();
-    assert!(block_roots.len() < MAXIMUM_LENGTH);
-    sizes.insert("block_roots", block_roots.ssz_bytes_len());
-
-    let state_roots: Vec<u8> = state.state_roots().as_ssz_bytes();
-    assert!(state_roots.len() < MAXIMUM_LENGTH);
-    sizes.insert("state_roots", state_roots.ssz_bytes_len());
-
-    let historical_roots: Vec<u8> = state.historical_roots().as_ssz_bytes();
-    assert!(historical_roots.len() < MAXIMUM_LENGTH);
-    sizes.insert("historical_roots", historical_roots.ssz_bytes_len());
-
-    let eth1_data_dep_root: Vec<u8> = state.eth1_data().deposit_root.as_ssz_bytes();
-    assert!(eth1_data_dep_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("eth1_data_dep_root", eth1_data_dep_root.ssz_bytes_len());
-
-    let eth1_data_deposit_count: Vec<u8> = state.eth1_data().deposit_count.as_ssz_bytes();
-    assert!(eth1_data_deposit_count.len() < MAXIMUM_LENGTH);
+    for i in state
+        .latest_block_header()
+        .parent_root
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
-        "eth1_data_deposit_count",
-        eth1_data_deposit_count.ssz_bytes_len(),
+        "header_parent_root",
+        state
+            .latest_block_header()
+            .parent_root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let eth1_data_block_hash: Vec<u8> = state.eth1_data().block_hash.as_ssz_bytes();
-    assert!(eth1_data_block_hash.len() < MAXIMUM_LENGTH);
-    sizes.insert("eth1_data_block_hash", eth1_data_block_hash.ssz_bytes_len());
-
-    let eth1_data_votes = state.eth1_data_votes().as_ssz_bytes();
-    assert!(eth1_data_votes.len() < MAXIMUM_LENGTH);
-    sizes.insert("eth1_data_votes", eth1_data_votes.ssz_bytes_len());
-
-    let eth1_deposit_index: Vec<u8> = state.eth1_deposit_index().as_ssz_bytes();
-    assert!(eth1_deposit_index.len() < MAXIMUM_LENGTH);
-    sizes.insert("eth1_deposit_index", eth1_deposit_index.ssz_bytes_len());
-
-    let validators: Vec<u8> = state.validators().as_ssz_bytes();
-    assert!(validators.len() < MAXIMUM_LENGTH);
-    sizes.insert("validators", validators.ssz_bytes_len());
-
-    let balances: Vec<u8> = state.balances().as_ssz_bytes();
-    assert!(balances.len() < MAXIMUM_LENGTH);
-    sizes.insert("balances", balances.ssz_bytes_len());
-
-    let randao_mixes: Vec<u8> = state.randao_mixes().as_ssz_bytes();
-    assert!(randao_mixes.len() < MAXIMUM_LENGTH);
-    sizes.insert("randao_mixes", randao_mixes.ssz_bytes_len());
-
-    let slashings: Vec<u8> = state.slashings().as_ssz_bytes();
-    assert!(slashings.len() < MAXIMUM_LENGTH);
-    sizes.insert("slashings", slashings.ssz_bytes_len());
-
-    let previous_epoch_participation: Vec<u8> =
-        state.previous_epoch_participation().unwrap().as_ssz_bytes();
-    assert!(previous_epoch_participation.len() < MAXIMUM_LENGTH);
+    for i in state.latest_block_header().state_root.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
-        "previous_epoch_participation",
-        previous_epoch_participation.ssz_bytes_len(),
+        "header_state_root",
+        state
+            .latest_block_header()
+            .state_root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let current_epoch_participation: Vec<u8> =
-        state.current_epoch_participation().unwrap().as_ssz_bytes();
-    assert!(current_epoch_participation.len() < MAXIMUM_LENGTH);
+    for i in state.latest_block_header().body_root.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
-        "current_epoch_participation",
-        current_epoch_participation.ssz_bytes_len(),
+        "header_body_root",
+        state
+            .latest_block_header()
+            .body_root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    // JUSTIFICATION BITS
-    // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
-    let mut justification_bits = BitVec::from_bytes(&state.justification_bits().as_ssz_bytes());
-    assert!(justification_bits.len() % 4 == 0);
-    println!("Adding length cap to justification bits");
-    println!(
-        "\njustification bits without length cap: \n{:?}",
-        justification_bits
+    for i in state.block_roots().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "block_roots",
+        state.block_roots().as_ssz_bytes().ssz_bytes_len(),
     );
-    justification_bits.push(true);
-    println!(
-        "\njustification bits with length cap: \n{:?}\n",
-        justification_bits
+
+    for i in state.state_roots().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "state_roots",
+        state.state_roots().as_ssz_bytes().ssz_bytes_len(),
     );
-    let mut justification_bits: Vec<u8> = justification_bits.to_bytes();
-    let pad = [0u8; 1];
-    while justification_bits.len() < 4 {
-        justification_bits.extend_from_slice(&pad)
+
+    for i in state.historical_roots().as_ssz_bytes().iter() {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "historical_roots",
+        state.block_roots().as_ssz_bytes().ssz_bytes_len(),
+    );
+    offsets.insert("historical_roots", variable_parts.len());
+    let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
+    for i in offset_bytes[0..4].to_vec() {
+        fixed_parts.push(i);
     }
 
-    // justification bit length should be 4 bytes
-    // zero vector is illegal (should never occur here bc of length cap)
-    assert!(justification_bits.iter().sum::<u8>() > 0);
-    sizes.insert("justification_bits", justification_bits.ssz_bytes_len());
+    for i in state.eth1_data().deposit_root.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_data_dep_root",
+        state
+            .eth1_data()
+            .deposit_root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
 
-    let prev_just_check_epoch: Vec<u8> = state
+    for i in state.eth1_data().deposit_count.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_data_deposit_count",
+        state
+            .eth1_data()
+            .deposit_count
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
+
+    for i in state.eth1_data().block_hash.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_data_block_hash",
+        state.eth1_data().block_hash.as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state.eth1_data_votes().as_ssz_bytes().iter() {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_data_votes",
+        state.eth1_data_votes().as_ssz_bytes().ssz_bytes_len(),
+    );
+    offsets.insert("eth1_data_votes", variable_parts.len());
+    let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
+    for i in offset_bytes[0..4].to_vec() {
+        fixed_parts.push(i);
+    }
+
+    for i in state.eth1_deposit_index().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_deposit_index",
+        state.eth1_deposit_index().as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state.eth1_deposit_index().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "eth1_deposit_index",
+        state.eth1_deposit_index().as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state.validators().as_ssz_bytes().iter() {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "validators",
+        state.validators().as_ssz_bytes().ssz_bytes_len(),
+    );
+    offsets.insert("validators", variable_parts.len());
+
+    for i in state.balances().as_ssz_bytes().iter() {
+        variable_parts.push(*i);
+    }
+    sizes.insert("balances", state.balances().as_ssz_bytes().ssz_bytes_len());
+    offsets.insert("balances", variable_parts.len());
+
+    for i in state.randao_mixes().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "randao_mixes",
+        state.randao_mixes().as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state.slashings().as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "slashings",
+        state.slashings().as_ssz_bytes().ssz_bytes_len(),
+    );
+
+    for i in state
+        .previous_epoch_participation()
+        .unwrap()
+        .as_ssz_bytes()
+        .iter()
+    {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "previous_epoch_participation",
+        state
+            .previous_epoch_participation()
+            .unwrap()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
+    offsets.insert("previous_epoch_participation", variable_parts.len());
+    let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
+    for i in offset_bytes[0..4].to_vec() {
+        fixed_parts.push(i);
+    }
+
+    for i in state
+        .current_epoch_participation()
+        .unwrap()
+        .as_ssz_bytes()
+        .iter()
+    {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "current_epoch_participation",
+        state
+            .previous_epoch_participation()
+            .unwrap()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
+    offsets.insert("current_epoch_participation", variable_parts.len());
+    let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
+    for i in offset_bytes[0..4].to_vec() {
+        fixed_parts.push(i);
+    }
+
+    let justification_bits: Vec<u8> =
+        length_cap_to_justification_bits(&state.justification_bits().as_ssz_bytes());
+    for i in justification_bits.iter() {
+        fixed_parts.push(*i);
+    }
+    sizes.insert("justification_bits", justification_bits.len());
+
+    for i in state
         .previous_justified_checkpoint()
         .epoch
         .as_u64()
-        .as_ssz_bytes();
-    assert!(prev_just_check_epoch.len() < MAXIMUM_LENGTH);
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "prev_just_check_epoch",
-        prev_just_check_epoch.ssz_bytes_len(),
+        state
+            .previous_justified_checkpoint()
+            .epoch
+            .as_u64()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let prev_just_check_root: Vec<u8> = state.previous_justified_checkpoint().root.as_ssz_bytes();
-    assert!(prev_just_check_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("prev_just_check_root", prev_just_check_root.ssz_bytes_len());
+    for i in state
+        .previous_justified_checkpoint()
+        .root
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "prev_just_check_root",
+        state
+            .previous_justified_checkpoint()
+            .root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
 
-    let curr_just_check_epoch: Vec<u8> = state
+    for i in state
         .current_justified_checkpoint()
         .epoch
         .as_u64()
-        .as_ssz_bytes();
-    assert!(curr_just_check_epoch.len() < MAXIMUM_LENGTH);
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "curr_just_check_epoch",
-        curr_just_check_epoch.ssz_bytes_len(),
+        state
+            .current_justified_checkpoint()
+            .epoch
+            .as_u64()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let curr_just_check_root: Vec<u8> = state.current_justified_checkpoint().root.as_ssz_bytes();
-    assert!(curr_just_check_root.len() < MAXIMUM_LENGTH);
-    sizes.insert("curr_just_check_root", curr_just_check_root.ssz_bytes_len());
+    for i in state
+        .current_justified_checkpoint()
+        .root
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
+    sizes.insert(
+        "curr_just_check_root",
+        state
+            .current_justified_checkpoint()
+            .root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
 
-    let finalized_check_epoch: Vec<u8> = state.finalized_checkpoint().epoch.as_ssz_bytes();
-    assert!(finalized_check_epoch.len() < MAXIMUM_LENGTH);
+    for i in state.finalized_checkpoint().epoch.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "finalized_check_epoch",
-        finalized_check_epoch.ssz_bytes_len(),
+        state
+            .finalized_checkpoint()
+            .epoch
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let finalized_checkpoint_root: Vec<u8> = state.finalized_checkpoint().root.as_ssz_bytes();
-    assert!(finalized_checkpoint_root.len() < MAXIMUM_LENGTH);
+    for i in state.finalized_checkpoint().root.as_ssz_bytes().iter() {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
-        "finalized_checkpoint_root",
-        finalized_checkpoint_root.ssz_bytes_len(),
+        "finalized_check_root",
+        state
+            .finalized_checkpoint()
+            .root
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let inactivity_scores: Vec<u8> = state.inactivity_scores().unwrap().as_ssz_bytes();
-    assert!(inactivity_scores.len() < MAXIMUM_LENGTH);
-    sizes.insert("inactivity_scores", inactivity_scores.ssz_bytes_len());
+    for i in state.inactivity_scores().unwrap().as_ssz_bytes().iter() {
+        variable_parts.push(*i);
+    }
+    sizes.insert(
+        "inactivity_scores",
+        state
+            .inactivity_scores()
+            .unwrap()
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
+    );
+    offsets.insert("inactivity_scores", variable_parts.len());
+    let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
+    for i in offset_bytes[0..4].to_vec() {
+        fixed_parts.push(i);
+    }
 
-    let curr_sync_comm_pubkeys: &Vec<u8> = &state
+    for i in state
         .current_sync_committee()
         .unwrap()
         .pubkeys
-        .as_ssz_bytes();
-    assert!(curr_sync_comm_pubkeys.len() < MAXIMUM_LENGTH);
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "curr_sync_comm_pubkeys",
-        curr_sync_comm_pubkeys.ssz_bytes_len(),
+        state
+            .current_sync_committee()
+            .unwrap()
+            .pubkeys
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let curr_sync_comm_agg_pubkey: &Vec<u8> = &state
+    for i in state
         .current_sync_committee()
         .unwrap()
         .aggregate_pubkey
-        .as_ssz_bytes();
-    assert!(curr_sync_comm_agg_pubkey.len() < MAXIMUM_LENGTH);
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "curr_sync_comm_agg_pubkey",
-        curr_sync_comm_agg_pubkey.ssz_bytes_len(),
+        state
+            .current_sync_committee()
+            .unwrap()
+            .aggregate_pubkey
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let next_sync_comm_pubkeys: &Vec<u8> =
-        &state.next_sync_committee().unwrap().pubkeys.as_ssz_bytes();
-    assert!(next_sync_comm_pubkeys.len() < MAXIMUM_LENGTH);
+    for i in state
+        .next_sync_committee()
+        .unwrap()
+        .pubkeys
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "next_sync_comm_pubkeys",
-        next_sync_comm_pubkeys.ssz_bytes_len(),
+        state
+            .next_sync_committee()
+            .unwrap()
+            .pubkeys
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
 
-    let next_sync_comm_agg_pubkey: &Vec<u8> = &state
+    for i in state
         .next_sync_committee()
         .unwrap()
         .aggregate_pubkey
-        .as_ssz_bytes();
-    assert!(next_sync_comm_agg_pubkey.len() < MAXIMUM_LENGTH);
+        .as_ssz_bytes()
+        .iter()
+    {
+        fixed_parts.push(*i);
+    }
     sizes.insert(
         "next_sync_comm_agg_pubkey",
-        next_sync_comm_agg_pubkey.ssz_bytes_len(),
+        state
+            .next_sync_committee()
+            .unwrap()
+            .aggregate_pubkey
+            .as_ssz_bytes()
+            .ssz_bytes_len(),
     );
-
-    // calculate length of fixed parts (required to calculate offsets later)
-    // .len() is right for this as all vars have u8 type,
-    // so N elements == N bytes
-    // 4 bytes as placeholder for variable length offsets
-    let byte_len_fixed_parts = genesis_time.len()
-        + genesis_validators_root.len()
-        + slot.len()
-        + fork_curr_ver.len()
-        + fork_prev_ver.len()
-        + fork_epoch.len()
-        + header_slot.len()
-        + header_proposer_index.len()
-        + header_parent_root.len()
-        + header_body_root.len()
-        + header_state_root.len()
-        + block_roots.len()
-        + state_roots.len()
-        + eth1_data_block_hash.len()
-        + eth1_data_dep_root.len()
-        + eth1_data_deposit_count.len()
-        + eth1_deposit_index.len()
-        + randao_mixes.len()
-        + slashings.len()
-        + prev_just_check_epoch.len()
-        + prev_just_check_root.len()
-        + curr_just_check_epoch.len()
-        + curr_just_check_root.len()
-        + finalized_check_epoch.len()
-        + finalized_checkpoint_root.len()
-        + curr_sync_comm_pubkeys.len()
-        + curr_sync_comm_agg_pubkey.len()
-        + next_sync_comm_pubkeys.len()
-        + next_sync_comm_agg_pubkey.len()
-        + justification_bits.len()
-        + (BYTES_PER_LENGTH_OFFSET * (N_VARIABLE_LENGTH));
-
-    // CALCULATE VARIABLE LENGTH OFFSETS
-    // AND MAKE THEM 4 BYTES LONG AS PER SPEC.
-
-    let historical_roots_offset: usize = byte_len_fixed_parts;
-    offsets.insert("historical_roots", historical_roots_offset);
-    let historical_roots_offset: [u8; 8] = historical_roots_offset.to_le_bytes();
-    let historical_roots_offset: Vec<u8> = historical_roots_offset[0..4].to_vec();
-
-    // offset starts after historical roots
-    let eth1_data_votes_offset: usize = byte_len_fixed_parts + historical_roots.len();
-    offsets.insert("eth1_data_votes", eth1_data_votes_offset);
-    let eth1_data_votes_offset: [u8; 8] = eth1_data_votes_offset.to_le_bytes();
-    let eth1_data_votes_offset: Vec<u8> = eth1_data_votes_offset[0..4].to_vec();
-
-    // // offset starts after eth1 data votes
-    let validators_offset: usize =
-        byte_len_fixed_parts + historical_roots.len() + eth1_data_votes.len();
-    offsets.insert("validators", validators_offset);
-    let validators_offset: [u8; 8] = validators_offset.to_le_bytes();
-    let validators_offset: Vec<u8> = validators_offset[0..4].to_vec();
-
-    // // offset starts after validators
-    let balances_offset: usize =
-        byte_len_fixed_parts + historical_roots.len() + eth1_data_votes.len() + validators.len();
-    offsets.insert("balances", balances_offset);
-    let balances_offset: [u8; 8] = balances_offset.to_le_bytes();
-    let balances_offset: Vec<u8> = balances_offset[0..4].to_vec();
-
-    // // offset starts after balances
-    let previous_epoch_participation_offset: usize = byte_len_fixed_parts
-        + historical_roots.len()
-        + eth1_data_votes.len()
-        + validators.len()
-        + balances.len();
-    offsets.insert(
-        "previous_epoch_participation",
-        previous_epoch_participation_offset,
-    );
-    let previous_epoch_participation_offset: [u8; 8] =
-        previous_epoch_participation_offset.to_le_bytes();
-    let previous_epoch_participation_offset: Vec<u8> =
-        previous_epoch_participation_offset[0..4].to_vec();
-
-    // // offset starts after previous_epoch
-    let current_epoch_participation_offset: usize = byte_len_fixed_parts
-        + historical_roots.len()
-        + eth1_data_votes.len()
-        + validators.len()
-        + balances.len()
-        + previous_epoch_participation.len();
-    offsets.insert(
-        "current_epoch_participation",
-        current_epoch_participation_offset,
-    );
-    let current_epoch_participation_offset: [u8; 8] =
-        current_epoch_participation_offset.to_le_bytes();
-    let current_epoch_participation_offset: Vec<u8> =
-        current_epoch_participation_offset[0..4].to_vec();
-
-    // // offset starts after previous_epoch
-    let inactivity_scores_offset: usize = byte_len_fixed_parts
-        + historical_roots.len()
-        + eth1_data_votes.len()
-        + validators.len()
-        + balances.len()
-        + previous_epoch_participation.len()
-        + current_epoch_participation.len();
-    offsets.insert("inactivity_scores", inactivity_scores_offset);
-    let inactivity_scores_offset: [u8; 8] = inactivity_scores_offset.to_le_bytes();
-    let inactivity_scores_offset: Vec<u8> = inactivity_scores_offset[0..4].to_vec();
-
-    // check all offsets are 4 bytes long
-    for i in [
-        historical_roots_offset.len(),
-        eth1_data_votes_offset.len(),
-        validators_offset.len(),
-        previous_epoch_participation_offset.len(),
-        current_epoch_participation_offset.len(),
-        balances_offset.len(),
-        inactivity_scores_offset.len(),
-    ]
-    .iter()
-    {
-        assert_eq!(i.to_owned(), 4 as usize);
-    }
 
     // insert total size into size hashmap
     // also assert that the total serialized size equals the last offset + last var size
-    sizes.insert("fixed_parts", byte_len_fixed_parts);
+    sizes.insert("fixed_parts", fixed_parts.len());
 
     // BUILD SERIALIZED STATE OBJECT
     // interleave offsets with fixed-length data then
@@ -382,67 +511,11 @@ pub fn serialize_beacon_state(
 
     // define serialized state object as empty vec
     let mut serialized_state: Vec<u8> = vec![];
-
-    // add data and offsets sequentially
-    // to empty vec
-    for var in [
-        genesis_time,
-        genesis_validators_root,
-        slot,
-        fork_prev_ver,
-        fork_curr_ver,
-        fork_epoch,
-        header_slot,
-        header_proposer_index,
-        header_parent_root,
-        header_state_root,
-        header_body_root,
-        block_roots,
-        state_roots,
-        historical_roots_offset,
-        eth1_data_dep_root,
-        eth1_data_deposit_count,
-        eth1_data_block_hash,
-        eth1_data_votes_offset,
-        eth1_deposit_index,
-        validators_offset,
-        balances_offset,
-        randao_mixes,
-        slashings,
-        previous_epoch_participation_offset,
-        current_epoch_participation_offset,
-        justification_bits,
-        prev_just_check_epoch,
-        prev_just_check_root,
-        curr_just_check_epoch,
-        curr_just_check_root,
-        finalized_check_epoch,
-        finalized_checkpoint_root,
-        inactivity_scores_offset,
-        curr_sync_comm_pubkeys.to_owned(),
-        curr_sync_comm_agg_pubkey.to_owned(),
-        next_sync_comm_pubkeys.to_owned(),
-        next_sync_comm_agg_pubkey.to_owned(),
-        historical_roots,
-        eth1_data_votes,
-        validators,
-        balances,
-        previous_epoch_participation,
-        current_epoch_participation,
-        inactivity_scores,
-    ] {
-        for i in var {
-            serialized_state.push(i)
-        }
-    }
+    serialized_state.append(&mut fixed_parts);
+    serialized_state.append(&mut variable_parts);
 
     sizes.insert("total_length", serialized_state.len());
     assert!(serialized_state.len() < MAXIMUM_LENGTH);
-
-    assert_eq!(
-        sizes["total_length"],
-        sizes["inactivity_scores"] + offsets["inactivity_scores"]
-    );
 
     // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
     // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
@@ -459,86 +532,104 @@ pub fn serialize_beacon_state(
     return (serialized_state, sizes, offsets);
 }
 
-pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
-    // small inner func for converting vec<u8> to vecArray<u8>
-    // i.e. make vec length fixed
-    fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8; 32] {
-        let mut arr = [0u8; 32];
-        for (place, element) in arr.iter_mut().zip(vector.iter()) {
-            *place = *element;
-        }
-        arr
+pub fn length_cap_to_justification_bits(justification_bits: &Vec<u8>) -> Vec<u8> {
+    // JUSTIFICATION BITS
+    // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
+    let mut bits = BitVec::from_bytes(justification_bits);
+    assert!(bits.len() % 4 == 0);
+    bits.push(true);
+
+    let mut bytes: Vec<u8> = bits.to_bytes();
+    let pad = [0u8; 1];
+    while bytes.len() < 4 {
+        bytes.extend_from_slice(&pad)
     }
-
-    //ssz serialize the state object
-    let serialized_state = state.as_ssz_bytes();
-
-    // each element in serialized_state is a u8, i.e. 1 byte
-    // chunks of 32 elements = 32 bytes as expected for merkleization
-    let chunked = serialized_state.chunks(32);
-    println!("chunked length: {:?}", chunked.len());
-
-    // convert each 32 byte chunk of the serialized object into H256 type
-    // and append each to vec leaves
-    let mut leaves: Vec<H256> = vec![];
-    for chunk in chunked {
-        let chunk_vec = chunk.to_vec();
-        let chunk_fixed: [u8; 32] = vector_as_u8_32_array(chunk_vec);
-        let leaf = H256::from(chunk_fixed);
-        leaves.push(leaf);
-    }
-    return leaves;
+    // justification bit length should be 4 bytes
+    // zero vector is illegal (should never occur here bc of length cap)
+    assert!(bytes.iter().sum::<u8>() > 0);
+    return bytes;
 }
 
-pub fn get_merkle_tree(leaves: &Vec<H256>) -> (MerkleTree, usize) {
-    // // get tree depth and number of leaves to pass to merkle func
-    let n_leaves: f64 = leaves.len() as f64;
+// pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
+//     // small inner func for converting vec<u8> to vecArray<u8>
+//     // i.e. make vec length fixed
+//     fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8; 32] {
+//         let mut arr = [0u8; 32];
+//         for (place, element) in arr.iter_mut().zip(vector.iter()) {
+//             *place = *element;
+//         }
+//         arr
+//     }
 
-    let tree_depth: usize = ((n_leaves.floor().log2()) + 1.0) as usize;
+//     //ssz serialize the state object
+//     let serialized_state = state.as_ssz_bytes();
 
-    let merkle_tree = MerkleTree::create(&leaves, tree_depth);
+//     // each element in serialized_state is a u8, i.e. 1 byte
+//     // chunks of 32 elements = 32 bytes as expected for merkleization
+//     let chunked = serialized_state.chunks(32);
+//     println!("chunked length: {:?}", chunked.len());
 
-    return (merkle_tree, tree_depth);
-}
+//     // convert each 32 byte chunk of the serialized object into H256 type
+//     // and append each to vec leaves
+//     let mut leaves: Vec<H256> = vec![];
+//     for chunk in chunked {
+//         let chunk_vec = chunk.to_vec();
+//         let chunk_fixed: [u8; 32] = vector_as_u8_32_array(chunk_vec);
+//         let leaf = H256::from(chunk_fixed);
+//         leaves.push(leaf);
+//     }
+//     return leaves;
+// }
 
-pub fn get_branch_indices(leaf_index: usize) -> Vec<usize> {
-    // function takes leaf index and returns
-    // the indexes for all sibling and parent roots
-    // required for a merkle proof for the leaf
-    // NB not actually implemented in main() bc
-    // superseded by Lighthouse's get_proof() func
+// pub fn get_merkle_tree(leaves: &Vec<H256>) -> (MerkleTree, usize) {
+//     // // get tree depth and number of leaves to pass to merkle func
+//     let n_leaves: f64 = leaves.len() as f64;
 
-    let mut branch_indices: Vec<usize> = vec![];
+//     let tree_depth: usize = ((n_leaves.floor().log2()) + 1.0) as usize;
 
-    // initialize branch with the leaf
-    branch_indices.push(leaf_index as usize);
+//     let merkle_tree = MerkleTree::create(&leaves, tree_depth);
 
-    // while the last item in the list is not the state root
-    // sequence of pushes is: leaf, sibling, parent, sibling, parent...
-    // i.e. up a lovel, get hash partner, up a level, get hash partner...
-    while branch_indices.last_mut().unwrap().to_owned() as u64 > 1 {
-        // index of the leaf and its left and right neighbours
-        let leaf = branch_indices.last_mut().unwrap().to_owned() as u64;
-        let left = branch_indices.last_mut().unwrap().to_owned() as u64 - 1;
-        let right = branch_indices.last_mut().unwrap().to_owned() as u64 + 1;
+//     return (merkle_tree, tree_depth);
+// }
 
-        // if the index is even we always want its right neighbour
-        // to hash with. If odd, always left neighbour.
-        if branch_indices.last_mut().unwrap().to_owned() as u64 % 2 == 0 {
-            branch_indices.push(right as usize)
-        } else {
-            branch_indices.push(left as usize)
-        }
+// pub fn get_branch_indices(leaf_index: usize) -> Vec<usize> {
+//     // function takes leaf index and returns
+//     // the indexes for all sibling and parent roots
+//     // required for a merkle proof for the leaf
+//     // NB not actually implemented in main() bc
+//     // superseded by Lighthouse's get_proof() func
 
-        // the parent is always floor of index/2.
-        branch_indices.push(math::round::floor((leaf / 2) as f64, 0) as usize);
-    }
+//     let mut branch_indices: Vec<usize> = vec![];
 
-    return branch_indices;
-}
+//     // initialize branch with the leaf
+//     branch_indices.push(leaf_index as usize);
 
-pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize) -> Vec<H256> {
-    let (_leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
+//     // while the last item in the list is not the state root
+//     // sequence of pushes is: leaf, sibling, parent, sibling, parent...
+//     // i.e. up a lovel, get hash partner, up a level, get hash partner...
+//     while branch_indices.last_mut().unwrap().to_owned() as u64 > 1 {
+//         // index of the leaf and its left and right neighbours
+//         let leaf = branch_indices.last_mut().unwrap().to_owned() as u64;
+//         let left = branch_indices.last_mut().unwrap().to_owned() as u64 - 1;
+//         let right = branch_indices.last_mut().unwrap().to_owned() as u64 + 1;
 
-    return branch;
-}
+//         // if the index is even we always want its right neighbour
+//         // to hash with. If odd, always left neighbour.
+//         if branch_indices.last_mut().unwrap().to_owned() as u64 % 2 == 0 {
+//             branch_indices.push(right as usize)
+//         } else {
+//             branch_indices.push(left as usize)
+//         }
+
+//         // the parent is always floor of index/2.
+//         branch_indices.push(math::round::floor((leaf / 2) as f64, 0) as usize);
+//     }
+
+//     return branch_indices;
+// }
+
+// pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize) -> Vec<H256> {
+//     let (_leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
+
+//     return branch;
+// }

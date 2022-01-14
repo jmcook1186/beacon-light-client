@@ -24,7 +24,8 @@ pub fn calculate_leaves(
     offsets: &HashMap<&str, usize>,
 ) -> Vec<String> {
     // sha256 hashes vecs of bytes from serialized object
-    // mixes in length data as per spec
+    // mixes in length data as per spec and
+    // returns vec of 64 leaf hashes
 
     let mut leaves = vec![];
     let mut start_idx: usize = 0;
@@ -61,7 +62,7 @@ pub fn calculate_leaves(
         "curr_just_check_epoch",
         "curr_just_check_root",
         "finalized_check_epoch",
-        "finalized_checkpoint_root",
+        "finalized_check_root",
         "inactivity_scores",
         "curr_sync_comm_pubkeys",
         "curr_sync_comm_agg_pubkey",
