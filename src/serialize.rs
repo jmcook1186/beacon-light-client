@@ -16,6 +16,7 @@ pub fn serialize_beacon_state(
 
     let mut fixed_parts: Vec<u8> = vec![];
     let mut variable_parts: Vec<u8> = vec![];
+    let mut variable_lengths = HashMap::new();
     let mut sizes = HashMap::new();
     let mut offsets = HashMap::new();
 
@@ -161,9 +162,9 @@ pub fn serialize_beacon_state(
     }
     sizes.insert(
         "historical_roots",
-        state.block_roots().as_ssz_bytes().ssz_bytes_len(),
+        state.historical_roots().as_ssz_bytes().ssz_bytes_len(),
     );
-    offsets.insert("historical_roots", variable_parts.len());
+    variable_lengths.insert("historical_roots", variable_parts.len());
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -208,7 +209,7 @@ pub fn serialize_beacon_state(
         "eth1_data_votes",
         state.eth1_data_votes().as_ssz_bytes().ssz_bytes_len(),
     );
-    offsets.insert("eth1_data_votes", variable_parts.len());
+    variable_lengths.insert("eth1_data_votes", variable_parts.len());
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -237,13 +238,13 @@ pub fn serialize_beacon_state(
         "validators",
         state.validators().as_ssz_bytes().ssz_bytes_len(),
     );
-    offsets.insert("validators", variable_parts.len());
+    variable_lengths.insert("validators", variable_parts.len());
 
     for i in state.balances().as_ssz_bytes().iter() {
         variable_parts.push(*i);
     }
     sizes.insert("balances", state.balances().as_ssz_bytes().ssz_bytes_len());
-    offsets.insert("balances", variable_parts.len());
+    variable_lengths.insert("balances", variable_parts.len());
 
     for i in state.randao_mixes().as_ssz_bytes().iter() {
         fixed_parts.push(*i);
@@ -277,7 +278,7 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    offsets.insert("previous_epoch_participation", variable_parts.len());
+    variable_lengths.insert("previous_epoch_participation", variable_parts.len());
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -299,7 +300,7 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    offsets.insert("current_epoch_participation", variable_parts.len());
+    variable_lengths.insert("current_epoch_participation", variable_parts.len());
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -419,7 +420,7 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    offsets.insert("inactivity_scores", variable_parts.len());
+    variable_lengths.insert("inactivity_scores", variable_parts.len());
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -501,9 +502,15 @@ pub fn serialize_beacon_state(
             .ssz_bytes_len(),
     );
 
+
     // insert total size into size hashmap
     // also assert that the total serialized size equals the last offset + last var size
     sizes.insert("fixed_parts", fixed_parts.len());
+
+    // calculate offsets and add to hashmap
+    for (key, value) in variable_lengths.iter(){
+        offsets.insert(*key, sizes["fixed_parts"] + value);
+    }
 
     // BUILD SERIALIZED STATE OBJECT
     // interleave offsets with fixed-length data then
