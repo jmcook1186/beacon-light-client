@@ -47,98 +47,64 @@ pub fn serialize_beacon_state(
     }
     sizes.insert("slot", state.slot().as_ssz_bytes().ssz_bytes_len());
 
-    for i in state.fork().previous_version.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
-    sizes.insert(
-        "fork_prev_ver",
-        state.fork().previous_version.as_ssz_bytes().ssz_bytes_len(),
-    );
+    // remove these multiple loops by appending all three vars into single vec
+    // and iteratign once through it
 
-    for i in state.fork().current_version.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
-    sizes.insert(
-        "fork_curr_ver",
-        state.fork().current_version.as_ssz_bytes().ssz_bytes_len(),
-    );
+    let mut fork: Vec<u8> = vec![];
+    fork.append(&mut state.fork().previous_version.as_ssz_bytes());
+    fork.append(&mut state.fork().current_version.as_ssz_bytes());
+    fork.append(&mut state.fork().epoch.as_ssz_bytes());
 
-    for i in state.fork().epoch.as_ssz_bytes().iter() {
+    for i in fork.iter() {
         fixed_parts.push(*i);
     }
-    sizes.insert(
-        "fork_epoch",
-        state.fork().epoch.as_ssz_bytes().ssz_bytes_len(),
-    );
 
-    for i in state.latest_block_header().slot.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
+    sizes.insert("fork", fork.len());
     sizes.insert(
-        "header_slot",
-        state
-            .latest_block_header()
-            .slot
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
+        "fork_previous_version",
+        state.fork().previous_version.as_ssz_bytes().len(),
     );
+    sizes.insert(
+        "fork_current_version",
+        state.fork().current_version.as_ssz_bytes().len(),
+    );
+    sizes.insert("fork_epoch", state.fork().epoch.as_ssz_bytes().len());
 
-    for i in state
-        .latest_block_header()
-        .proposer_index
-        .as_ssz_bytes()
-        .iter()
-    {
+    let mut latest_block_header: Vec<u8> = vec![];
+    latest_block_header.append(&mut state.latest_block_header().slot.as_ssz_bytes());
+    latest_block_header.append(&mut state.latest_block_header().proposer_index.as_ssz_bytes());
+    latest_block_header.append(&mut state.latest_block_header().parent_root.as_ssz_bytes());
+    latest_block_header.append(&mut state.latest_block_header().state_root.as_ssz_bytes());
+    latest_block_header.append(&mut state.latest_block_header().body_root.as_ssz_bytes());
+
+    for i in latest_block_header.iter() {
         fixed_parts.push(*i);
     }
+
+    sizes.insert("latest_block_header", latest_block_header.len());
     sizes.insert(
         "header_proposer_index",
         state
             .latest_block_header()
             .proposer_index
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state
-        .latest_block_header()
-        .parent_root
-        .as_ssz_bytes()
-        .iter()
-    {
-        fixed_parts.push(*i);
-    }
+    sizes.insert(
+        "header_slot",
+        state.latest_block_header().slot.as_ssz_bytes().len(),
+    );
     sizes.insert(
         "header_parent_root",
-        state
-            .latest_block_header()
-            .parent_root
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
+        state.latest_block_header().parent_root.as_ssz_bytes().len(),
     );
-
-    for i in state.latest_block_header().state_root.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
         "header_state_root",
-        state
-            .latest_block_header()
-            .state_root
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
+        state.latest_block_header().state_root.as_ssz_bytes().len(),
     );
-
-    for i in state.latest_block_header().body_root.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
         "header_body_root",
-        state
-            .latest_block_header()
-            .body_root
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
+        state.latest_block_header().body_root.as_ssz_bytes().len(),
     );
 
     for i in state.block_roots().as_ssz_bytes().iter() {
@@ -164,42 +130,33 @@ pub fn serialize_beacon_state(
         "historical_roots",
         state.historical_roots().as_ssz_bytes().ssz_bytes_len(),
     );
-    variable_lengths.insert("historical_roots", variable_parts.len());
+    variable_lengths.insert("historical_roots", sizes["historical_roots"]);
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
     }
 
-    for i in state.eth1_data().deposit_root.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
-    sizes.insert(
-        "eth1_data_dep_root",
-        state
-            .eth1_data()
-            .deposit_root
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
-    );
+    let mut eth1_data: Vec<u8> = vec![];
+    eth1_data.append(&mut state.eth1_data().deposit_root.as_ssz_bytes());
+    eth1_data.append(&mut state.eth1_data().deposit_count.as_ssz_bytes());
+    eth1_data.append(&mut state.eth1_data().block_hash.as_ssz_bytes());
 
-    for i in state.eth1_data().deposit_count.as_ssz_bytes().iter() {
+    for i in eth1_data.iter() {
         fixed_parts.push(*i);
     }
-    sizes.insert(
-        "eth1_data_deposit_count",
-        state
-            .eth1_data()
-            .deposit_count
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
-    );
 
-    for i in state.eth1_data().block_hash.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
+    sizes.insert("eth1_data", eth1_data.len());
     sizes.insert(
-        "eth1_data_block_hash",
-        state.eth1_data().block_hash.as_ssz_bytes().ssz_bytes_len(),
+        "eth1_deposit_count",
+        state.eth1_data().deposit_count.as_ssz_bytes().len(),
+    );
+    sizes.insert(
+        "eth1_deposit_root",
+        state.eth1_data().deposit_root.as_ssz_bytes().len(),
+    );
+    sizes.insert(
+        "eth1_block_hash",
+        state.eth1_data().block_hash.as_ssz_bytes().len(),
     );
 
     for i in state.eth1_data_votes().as_ssz_bytes().iter() {
@@ -209,7 +166,7 @@ pub fn serialize_beacon_state(
         "eth1_data_votes",
         state.eth1_data_votes().as_ssz_bytes().ssz_bytes_len(),
     );
-    variable_lengths.insert("eth1_data_votes", variable_parts.len());
+    variable_lengths.insert("eth1_data_votes", sizes["eth1_data_votes"]);
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -238,13 +195,13 @@ pub fn serialize_beacon_state(
         "validators",
         state.validators().as_ssz_bytes().ssz_bytes_len(),
     );
-    variable_lengths.insert("validators", variable_parts.len());
+    variable_lengths.insert("validators", sizes["validators"]);
 
     for i in state.balances().as_ssz_bytes().iter() {
         variable_parts.push(*i);
     }
     sizes.insert("balances", state.balances().as_ssz_bytes().ssz_bytes_len());
-    variable_lengths.insert("balances", variable_parts.len());
+    variable_lengths.insert("balances", sizes["balances"]);
 
     for i in state.randao_mixes().as_ssz_bytes().iter() {
         fixed_parts.push(*i);
@@ -278,7 +235,10 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    variable_lengths.insert("previous_epoch_participation", variable_parts.len());
+    variable_lengths.insert(
+        "previous_epoch_participation",
+        sizes["previous_epoch_participation"],
+    );
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -300,7 +260,10 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    variable_lengths.insert("current_epoch_participation", variable_parts.len());
+    variable_lengths.insert(
+        "current_epoch_participation",
+        sizes["current_epoch_participation"],
+    );
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
@@ -313,100 +276,101 @@ pub fn serialize_beacon_state(
     }
     sizes.insert("justification_bits", justification_bits.len());
 
-    for i in state
-        .previous_justified_checkpoint()
-        .epoch
-        .as_u64()
-        .as_ssz_bytes()
-        .iter()
-    {
+    let mut previous_justified_checkpoint: Vec<u8> = vec![];
+    previous_justified_checkpoint.append(
+        &mut state
+            .previous_justified_checkpoint()
+            .epoch
+            .as_u64()
+            .as_ssz_bytes(),
+    );
+
+    previous_justified_checkpoint
+        .append(&mut state.previous_justified_checkpoint().root.as_ssz_bytes());
+
+    for i in previous_justified_checkpoint.iter() {
         fixed_parts.push(*i);
     }
+
     sizes.insert(
-        "prev_just_check_epoch",
+        "previous_justified_checkpoint",
+        previous_justified_checkpoint.len(),
+    );
+    sizes.insert(
+        "previous_checkpoint_epoch",
         state
             .previous_justified_checkpoint()
             .epoch
             .as_u64()
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state
-        .previous_justified_checkpoint()
-        .root
-        .as_ssz_bytes()
-        .iter()
-    {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
-        "prev_just_check_root",
+        "previous_checkpoint_root",
         state
             .previous_justified_checkpoint()
             .root
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
 
-    for i in state
-        .current_justified_checkpoint()
-        .epoch
-        .as_u64()
-        .as_ssz_bytes()
-        .iter()
-    {
+    let mut current_justified_checkpoint: Vec<u8> = vec![];
+    current_justified_checkpoint.append(
+        &mut state
+            .current_justified_checkpoint()
+            .epoch
+            .as_u64()
+            .as_ssz_bytes(),
+    );
+
+    current_justified_checkpoint
+        .append(&mut state.current_justified_checkpoint().root.as_ssz_bytes());
+    for i in current_justified_checkpoint.iter() {
         fixed_parts.push(*i);
     }
     sizes.insert(
-        "curr_just_check_epoch",
+        "current_justified_checkpoint",
+        current_justified_checkpoint.len(),
+    );
+
+    sizes.insert(
+        "current_checkpoint_epoch",
         state
             .current_justified_checkpoint()
             .epoch
             .as_u64()
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state
-        .current_justified_checkpoint()
-        .root
-        .as_ssz_bytes()
-        .iter()
-    {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
-        "curr_just_check_root",
+        "current_checkpoint_root",
         state
             .current_justified_checkpoint()
             .root
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
 
-    for i in state.finalized_checkpoint().epoch.as_ssz_bytes().iter() {
+    let mut finalized_checkpoint: Vec<u8> = vec![];
+    finalized_checkpoint.append(&mut state.finalized_checkpoint().epoch.as_ssz_bytes());
+    finalized_checkpoint.append(&mut state.finalized_checkpoint().root.as_ssz_bytes());
+
+    for i in finalized_checkpoint.iter() {
         fixed_parts.push(*i);
     }
+    sizes.insert("finalized_checkpoint", finalized_checkpoint.len());
     sizes.insert(
-        "finalized_check_epoch",
+        "finalized_checkpoint_epoch",
         state
             .finalized_checkpoint()
             .epoch
+            .as_u64()
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state.finalized_checkpoint().root.as_ssz_bytes().iter() {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
-        "finalized_check_root",
-        state
-            .finalized_checkpoint()
-            .root
-            .as_ssz_bytes()
-            .ssz_bytes_len(),
+        "finalized_checkpoint_root",
+        state.finalized_checkpoint().root.as_ssz_bytes().len(),
     );
 
     for i in state.inactivity_scores().unwrap().as_ssz_bytes().iter() {
@@ -420,109 +384,125 @@ pub fn serialize_beacon_state(
             .as_ssz_bytes()
             .ssz_bytes_len(),
     );
-    variable_lengths.insert("inactivity_scores", variable_parts.len());
+    variable_lengths.insert("inactivity_scores", sizes["inactivity_scores"]);
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
         fixed_parts.push(i);
     }
 
-    for i in state
-        .current_sync_committee()
-        .unwrap()
-        .pubkeys
-        .as_ssz_bytes()
-        .iter()
-    {
+    let mut current_sync_committee: Vec<u8> = vec![];
+    current_sync_committee.append(
+        &mut state
+            .current_sync_committee()
+            .unwrap()
+            .pubkeys
+            .as_ssz_bytes(),
+    );
+    current_sync_committee.append(
+        &mut state
+            .current_sync_committee()
+            .unwrap()
+            .aggregate_pubkey
+            .as_ssz_bytes(),
+    );
+
+    for i in current_sync_committee.iter() {
         fixed_parts.push(*i);
     }
+    sizes.insert("current_sync_committee", current_sync_committee.len());
     sizes.insert(
-        "curr_sync_comm_pubkeys",
+        "current_sync_committee_pubkeys",
         state
             .current_sync_committee()
             .unwrap()
             .pubkeys
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state
-        .current_sync_committee()
-        .unwrap()
-        .aggregate_pubkey
-        .as_ssz_bytes()
-        .iter()
-    {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
-        "curr_sync_comm_agg_pubkey",
+        "current_sync_committee_agg_pubkey",
         state
             .current_sync_committee()
             .unwrap()
             .aggregate_pubkey
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
 
-    for i in state
-        .next_sync_committee()
-        .unwrap()
-        .pubkeys
-        .as_ssz_bytes()
-        .iter()
-    {
+    let mut next_sync_committee: Vec<u8> = vec![];
+    next_sync_committee.append(&mut state.next_sync_committee().unwrap().pubkeys.as_ssz_bytes());
+    next_sync_committee.append(
+        &mut state
+            .next_sync_committee()
+            .unwrap()
+            .aggregate_pubkey
+            .as_ssz_bytes(),
+    );
+
+    for i in next_sync_committee.iter() {
         fixed_parts.push(*i);
     }
+    sizes.insert("next_sync_committee", next_sync_committee.len());
     sizes.insert(
-        "next_sync_comm_pubkeys",
+        "next_sync_committee_pubkeys",
         state
             .next_sync_committee()
             .unwrap()
             .pubkeys
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
-    for i in state
-        .next_sync_committee()
-        .unwrap()
-        .aggregate_pubkey
-        .as_ssz_bytes()
-        .iter()
-    {
-        fixed_parts.push(*i);
-    }
     sizes.insert(
-        "next_sync_comm_agg_pubkey",
+        "next_sync_committee_agg_pubkey",
         state
             .next_sync_committee()
             .unwrap()
             .aggregate_pubkey
             .as_ssz_bytes()
-            .ssz_bytes_len(),
+            .len(),
     );
-
 
     // insert total size into size hashmap
     // also assert that the total serialized size equals the last offset + last var size
+    assert!(
+        fixed_parts.len() + variable_parts.len()
+            < 2usize.pow((BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE) as u32)
+    );
     sizes.insert("fixed_parts", fixed_parts.len());
+    sizes.insert("variable_parts", variable_parts.len());
+    sizes.insert("total_length", fixed_parts.len() + variable_parts.len());
 
     // calculate offsets and add to hashmap
-    for (key, value) in variable_lengths.iter(){
-        offsets.insert(*key, sizes["fixed_parts"] + value);
-    }
+    offsets.insert("historical_roots", sizes["fixed_parts"]);
+    offsets.insert(
+        "eth1_data_votes",
+        offsets["historical_roots"] + sizes["historical_roots"],
+    );
+    offsets.insert(
+        "validators",
+        offsets["eth1_data_votes"] + sizes["eth1_data_votes"],
+    );
+    offsets.insert("balances", offsets["validators"] + sizes["validators"]);
+    offsets.insert(
+        "previous_epoch_participation",
+        offsets["balances"] + sizes["balances"],
+    );
+    offsets.insert(
+        "current_epoch_participation",
+        offsets["previous_epoch_participation"] + sizes["previous_epoch_participation"],
+    );
+    offsets.insert(
+        "inactivity_scores",
+        offsets["current_epoch_participation"] + sizes["current_epoch_participation"],
+    );
 
     // BUILD SERIALIZED STATE OBJECT
-    // interleave offsets with fixed-length data then
-    // append var-length data
-
     // define serialized state object as empty vec
+    // append fixed and variable parts to it
+    // offsets are already interleaved in fixed_parts
     let mut serialized_state: Vec<u8> = vec![];
     serialized_state.append(&mut fixed_parts);
     serialized_state.append(&mut variable_parts);
-
-    sizes.insert("total_length", serialized_state.len());
-    assert!(serialized_state.len() < MAXIMUM_LENGTH);
 
     // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
     // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
