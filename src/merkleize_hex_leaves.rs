@@ -4,7 +4,8 @@ use bitvec::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
-// THIS VERSION KEEPS HASHES AS BYTES THROUGHOUT
+// THIS VERSION HEX ENCODES EACH LEAF BEFORE TREE BUILDING
+// OTHER VERSION KEEPS ALL LEAVES AS BYTES (merkleize.rs)
 
 // control flow here is:
 // 1) generate chunks() (returns vec of root hashes, one per leaf)
@@ -24,12 +25,12 @@ pub fn generate_chunks(
     serialized_state: &Vec<u8>,
     sizes: &HashMap<&str, usize>,
     offsets: &HashMap<&str, usize>,
-) -> Vec<Vec<u8>> {
+) -> Vec<String> {
     // sha256 hashes vecs of bytes from serialized object
     // mixes in length data as per spec and
     // returns vec of 64 leaf hashes
 
-    let mut chunks: Vec<Vec<u8>> = vec![];
+    let mut chunks = vec![];
     let mut start_idx: usize = 0;
 
     let keys: Vec<&str> = vec![
@@ -80,17 +81,17 @@ pub fn generate_chunks(
         }
 
         let var = deserialize_var(start_idx, sizes[key], &serialized_state, &bit_flag);
-        let mut root: Vec<u8> = vec![];
+        let mut root = "".to_string();
         // if var is a container then get the container root
         if containers.contains(key) {
-            let var: Vec<u8> = pack(var);
+            let var = pack(var);
             root = hash_tree_root_container(key, var, offsets, sizes);
         } else {
-            let var: Vec<u8> = pack(var);
+            let var = pack(var);
             root = hash_tree_root(&var);
         }
         // mix in length data, push root to chunks vec
-        let root: Vec<u8> = mix_in_length_data(&root, &sizes[key]);
+        let root = mix_in_length_data(&root, &sizes[key]);
         
         chunks.push(root);
         // advance start_idx to the end of the var just deserialized
@@ -110,7 +111,7 @@ pub fn hash_tree_root_container(
     var: Vec<u8>,
     offsets: &HashMap<&str, usize>,
     sizes: &HashMap<&str, usize>,
-) -> Vec<u8> {
+) -> String {
 
     if key == "fork" {
         println!("HASHING FORK");
@@ -129,8 +130,8 @@ pub fn hash_tree_root_container(
         chunks.append(&mut fork_current_version);
         chunks.append(&mut fork_epoch);
 
-        let chunks: Vec<u8> = pack(chunks);
-        let root: Vec<u8> = hash_tree_root(&chunks);
+        let chunks = pack(chunks);
+        let root = hash_tree_root(&chunks);
 
         return root;
     } else if key == "eth1_data" {
@@ -268,8 +269,7 @@ pub fn hash_tree_root_container(
         let root = hash_tree_root(&chunks);
 
         return root;
-    } else {
-        assert!(key == "next_sync_committee");
+    } else if key == "next_sync_committee" {
         let mut pubkeys = pack(var[0..sizes["next_sync_committee_pubkeys"]].to_vec());
         let mut agg_pubkey = pack(
             var[sizes["next_sync_committee_pubkeys"]
@@ -285,15 +285,17 @@ pub fn hash_tree_root_container(
         let root = hash_tree_root(&chunks);
 
         return root;
+    } else {
+        return "INVALID KEY".to_string();
     }
 }
 
-pub fn build_tree(chunks: Vec<Vec<u8>>) -> Vec<Vec<Vec<u8>>> {
+pub fn build_tree(chunks: Vec<String>) -> Vec<Vec<String>> {
     // first add data chunks, then pad with
     // zero chunks until N chunks is a power of 2
-    let mut padded_chunks: Vec<Vec<u8>> = vec![];
+    let mut padded_chunks: Vec<String> = vec![];
     for i in chunks.iter() {
-        padded_chunks.push(i.to_vec());
+        padded_chunks.push(i.to_string());
     }
 
     let chunks_to_add: usize = chunks.len().next_power_of_two() - chunks.len();
@@ -301,7 +303,8 @@ pub fn build_tree(chunks: Vec<Vec<u8>>) -> Vec<Vec<Vec<u8>>> {
     let zeros: Vec<u8> = vec![0u8; 32];
     let mut hasher = Sha256::new();
     hasher.update(zeros);
-    let result: Vec<u8> = hasher.finalize_reset().to_vec();
+    let result = hasher.finalize_reset();
+    let result = hex::encode(result);
 
     for i in (0..chunks_to_add) {
         padded_chunks.push(result.clone());
@@ -310,8 +313,8 @@ pub fn build_tree(chunks: Vec<Vec<u8>>) -> Vec<Vec<Vec<u8>>> {
     // build a tree that is a vector of vectors of strings
     // each sub-vector will be a layer in the tree
     // each string is a hex encoded hash (i.e. a node)
-    let mut tree: Vec<Vec<Vec<u8>>> = vec![];
-    let mut chunks_to_hash: Vec<Vec<u8>> = padded_chunks.clone();
+    let mut tree: Vec<Vec<String>> = vec![];
+    let mut chunks_to_hash: Vec<String> = padded_chunks.clone();
 
     tree.push(padded_chunks);
 
@@ -328,7 +331,7 @@ pub fn build_tree(chunks: Vec<Vec<u8>>) -> Vec<Vec<Vec<u8>>> {
         chunks.len().next_power_of_two()
     );
     while chunks_to_hash.len() > 1 {
-        let mut new_nodes: Vec<Vec<u8>> = vec![];
+        let mut new_nodes: Vec<String> = vec![];
         //println!("\nHASHING IN LAYER {:?}\n", layer);
         // count through chunks in steps of 2
         for i in (0..chunks_to_hash.len()).step_by(2) {
@@ -337,19 +340,20 @@ pub fn build_tree(chunks: Vec<Vec<u8>>) -> Vec<Vec<Vec<u8>>> {
             hasher.update(&chunks_to_hash[i]);
             hasher.update(&chunks_to_hash[i + 1]);
             let result = hasher.finalize_reset();
-            new_nodes.push(result.to_vec())
+            let result = hex::encode(result);
+            new_nodes.push(result)
         }
         chunks_to_hash = new_nodes.clone();
 
         tree.push(new_nodes);
     }
 
-    println!("CALCULATED STATE_ROOT: {:?}\n",hex::encode(&tree[5][0]));
+    println!("CALCULATED STATE_ROOT: {:?}\n", tree[5]);
 
     return tree;
 }
 
-pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
+pub fn hash_tree_root(leaf: &Vec<u8>) -> String {
     assert!(leaf.len() >= 32);
     assert_eq!(leaf.len() % 32, 0);
 
@@ -358,7 +362,7 @@ pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(leaf);
         let result = hasher.finalize_reset();
-        return result.to_vec();
+        return hex::encode(result);
     } else {
         // here we deal with multiple chunks
         // by recursively hashing pairs
@@ -369,8 +373,8 @@ pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
         assert!(leaf.len() % 32 == 0);
         assert!(chunked_leaf.len() == leaf.len() / 32);
 
-        let root: Vec<u8> = vec![];
-        let mut chunks = chunked_leaf;
+        let root: String;
+        let mut chunks = chunked_leaf.clone();
 
         // iterate through pairs of chunks
         // creating new vec of parent nodes
@@ -391,15 +395,15 @@ pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
         assert!(chunks.len() == 1);
         assert_eq!(chunks[0].len(), 32);
 
-        let root = &chunks[0];
+        let root = hex::encode(&chunks[0]);
         // 64 hex chars = 32 bytes
-        assert_eq!(root.len(), 32);
+        assert_eq!(root.len(), 64);
 
-        return root.to_owned();
+        return root;
     }
 }
 
-pub fn mix_in_length_data(root: &Vec<u8>, length: &usize) -> Vec<u8> {
+pub fn mix_in_length_data(root: &str, length: &usize) -> String {
     // mix in length data
     // we need a bytes representation (length 32) of
     // the var length to "mix_in_length" later
@@ -413,8 +417,9 @@ pub fn mix_in_length_data(root: &Vec<u8>, length: &usize) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(root);
     hasher.update(length_bytes);
-    let root = hasher.finalize_reset().to_vec();
+    let hash = hasher.finalize_reset().to_vec();
 
+    let root = hex::encode(hash);
     root
 }
 
