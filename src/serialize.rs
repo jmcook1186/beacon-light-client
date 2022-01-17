@@ -473,6 +473,7 @@ pub fn serialize_beacon_state(
     sizes.insert("total_length", fixed_parts.len() + variable_parts.len());
 
     // calculate offsets and add to hashmap
+    // offset is previous offset plus previous var length
     offsets.insert("historical_roots", sizes["fixed_parts"]);
     offsets.insert(
         "eth1_data_votes",

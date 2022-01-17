@@ -31,7 +31,11 @@ fn main() {
     // ssz serialize the state object, pad and hash each field, build merkle tree
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
     let chunks = merkleize::generate_chunks(&serialized_state, &sizes, &offsets);
-    let tree = merkleize::build_tree(chunks);
+    let tree: Vec<Vec<u8>> = merkleize::merkle_tree(chunks);
 
+    println!(
+        "CALCULATED STATE_ROOT: 0x{:?}\n",
+        hex::encode(&tree[tree.len() - 1])
+    );
     println!("DOWNLOADED STATE ROOT: {:?}\n", block.state_root());
 }
