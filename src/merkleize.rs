@@ -1,6 +1,5 @@
 extern crate hex;
 use bit_vec::BitVec;
-use bitvec::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
@@ -71,19 +70,22 @@ pub fn generate_chunks(
     for key in keys.iter() {
         // if var is justification bits remove the end cap
         let mut bit_flag = false;
+
         if key == &"justification_bits" {
             bit_flag = true;
+
         } else {
             bit_flag = false;
         }
 
         let var = deserialize_var(start_idx, sizes[key], &serialized_state, &bit_flag);
         assert_eq!(var.len(), sizes[key]);
+
         let mut root: Vec<u8> = vec![];
         // if var is a container then get the container root
         if containers.contains(key) {
             let var: Vec<u8> = pack(var);
-            root = hash_tree_root_container(key, var, offsets, sizes);
+            root = hash_tree_root_container(key, var, sizes);
         } else {
             let var: Vec<u8> = pack(var);
             root = hash_tree_root(&var);
@@ -104,12 +106,7 @@ pub fn generate_chunks(
     return chunks;
 }
 
-pub fn hash_tree_root_container(
-    key: &str,
-    var: Vec<u8>,
-    offsets: &HashMap<&str, usize>,
-    sizes: &HashMap<&str, usize>,
-) -> Vec<u8> {
+pub fn hash_tree_root_container(key: &str, var: Vec<u8>, sizes: &HashMap<&str, usize>) -> Vec<u8> {
     if key == "fork" {
         println!("HASHING FORK");
         let mut fork_previous_version = pack(var[0..sizes["fork_previous_version"]].to_vec());
@@ -338,7 +335,6 @@ pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
         assert!(leaf.len() % 32 == 0);
         assert!(chunked_leaf.len() == leaf.len() / 32);
 
-        let root: Vec<u8> = vec![];
         let mut chunks = chunked_leaf;
 
         // iterate through pairs of chunks
@@ -399,8 +395,9 @@ pub fn deserialize_var(
 
     // if the var is justification_bits then remove the end cap before continuing
     if *bit_flag {
-        let var_as_bytes = remove_cap_from_justification_bits(&var_as_bytes.to_vec());
+        return remove_cap_from_justification_bits(&var_as_bytes.to_vec());
     }
+    else{
     //check lengths are consistent
     assert!(stop - start == length);
     assert!(
@@ -412,6 +409,7 @@ pub fn deserialize_var(
     assert_eq!(length, var_as_bytes.len());
 
     return var_as_bytes.to_vec();
+}
 }
 
 pub fn pack(var_as_bytes: Vec<u8>) -> Vec<u8> {

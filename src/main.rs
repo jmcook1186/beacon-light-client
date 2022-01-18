@@ -22,11 +22,11 @@ fn main() {
     .expect("Failed to connect to a Beacon Node");
 
     // download beacon_state and make a snapshot
-    let state = build_objects::get_state(&api_key, &state_id, &endpoint_prefix);
+    let state = build_objects::get_state(&state_id, &endpoint_prefix);
     let _snapshot = build_objects::make_snapshot(&state);
 
     // download a beacon block and extract the body
-    let block = build_objects::get_block(&api_key, &state_id, &endpoint_prefix);
+    let block = build_objects::get_block(&state_id, &endpoint_prefix);
 
     // ssz serialize the state object, pad and hash each field, build merkle tree
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);

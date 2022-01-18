@@ -1,12 +1,9 @@
 use eth2::types::*;
-use merkle_proof::MerkleTree;
 extern crate hex;
-use crate::constants::{BITS_PER_BYTE, BYTES_PER_LENGTH_OFFSET, MAXIMUM_LENGTH, N_VARIABLE_LENGTH};
+use crate::constants::{BITS_PER_BYTE, BYTES_PER_LENGTH_OFFSET};
 use bit_vec::BitVec;
-use ethereum_types::H256;
 use ssz::Encode;
 use std::collections::HashMap;
-use std::convert::From;
 
 pub fn serialize_beacon_state(
     state: &BeaconState<MainnetEthSpec>,

@@ -1,16 +1,9 @@
 use std::format;
 extern crate hex;
-use crate::constants::{FINALIZED_ROOT_INDEX, NEXT_SYNC_COMMITTEE_INDEX};
-use crate::light_client_types::{LightClientSnapshot, LightClientUpdate};
-use crate::serialize;
+use crate::light_client_types::LightClientSnapshot;
 use eth2::types::*;
-use ethereum_types::H256;
 
-pub fn get_state(
-    api_key: &str,
-    state_id: &str,
-    endpoint_prefix: &str,
-) -> BeaconState<MainnetEthSpec> {
+pub fn get_state(state_id: &str, endpoint_prefix: &str) -> BeaconState<MainnetEthSpec> {
     let state_suffix: String = format!("v2/debug/beacon/states/{}", &state_id);
 
     let endpoint = String::from(endpoint_prefix) + &state_suffix;
@@ -40,11 +33,7 @@ pub fn make_snapshot(state: &BeaconState<MainnetEthSpec>) -> LightClientSnapshot
     return snapshot;
 }
 
-pub fn get_block(
-    api_key: &str,
-    state_id: &str,
-    endpoint_prefix: &str,
-) -> SignedBeaconBlock<MainnetEthSpec> {
+pub fn get_block(state_id: &str, endpoint_prefix: &str) -> SignedBeaconBlock<MainnetEthSpec> {
     let block_body_suffix: String = format!("v2/beacon/blocks/{}", &state_id);
     let endpoint = String::from(endpoint_prefix) + &block_body_suffix;
     let client = reqwest::blocking::ClientBuilder::new()
@@ -60,7 +49,7 @@ pub fn get_block(
     return block;
 }
 
-pub fn get_header(api_key: &str, state_id: &str, endpoint_prefix: &str) -> BlockHeaderData {
+pub fn get_header(state_id: &str, endpoint_prefix: &str) -> BlockHeaderData {
     let block_body_suffix: String = format!("v1/beacon/headers/{}", &state_id);
     let endpoint = String::from(endpoint_prefix) + &block_body_suffix;
     let client = reqwest::blocking::ClientBuilder::new()
