@@ -44,9 +44,7 @@ pub fn serialize_beacon_state(
     }
     sizes.insert("slot", state.slot().as_ssz_bytes().ssz_bytes_len());
 
-    // remove these multiple loops by appending all three vars into single vec
-    // and iteratign once through it
-
+    // fork is a container, so serialize all fields
     let mut fork: Vec<u8> = vec![];
     fork.append(&mut state.fork().previous_version.as_ssz_bytes());
     fork.append(&mut state.fork().current_version.as_ssz_bytes());
@@ -56,6 +54,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(*i);
     }
 
+    // we will still need the length of the fields for deserializing
     sizes.insert("fork", fork.len());
     sizes.insert(
         "fork_previous_version",
@@ -67,6 +66,7 @@ pub fn serialize_beacon_state(
     );
     sizes.insert("fork_epoch", state.fork().epoch.as_ssz_bytes().len());
 
+    // latest_block_header is also a container
     let mut latest_block_header: Vec<u8> = vec![];
     latest_block_header.append(&mut state.latest_block_header().slot.as_ssz_bytes());
     latest_block_header.append(&mut state.latest_block_header().proposer_index.as_ssz_bytes());
@@ -78,6 +78,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(*i);
     }
 
+    // need sizes of each field for deserialization
     sizes.insert("latest_block_header", latest_block_header.len());
     sizes.insert(
         "header_proposer_index",
@@ -133,6 +134,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(i);
     }
 
+    // eth1_data is also a container
     let mut eth1_data: Vec<u8> = vec![];
     eth1_data.append(&mut state.eth1_data().deposit_root.as_ssz_bytes());
     eth1_data.append(&mut state.eth1_data().deposit_count.as_ssz_bytes());
@@ -142,6 +144,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(*i);
     }
 
+    // need sizes of each field for deserialization
     sizes.insert("eth1_data", eth1_data.len());
     sizes.insert(
         "eth1_deposit_count",
@@ -163,6 +166,7 @@ pub fn serialize_beacon_state(
         "eth1_data_votes",
         state.eth1_data_votes().as_ssz_bytes().ssz_bytes_len(),
     );
+
     variable_lengths.insert("eth1_data_votes", sizes["eth1_data_votes"]);
     let offset_bytes: [u8; 8] = variable_parts.len().to_le_bytes();
     for i in offset_bytes[0..4].to_vec() {
@@ -266,13 +270,15 @@ pub fn serialize_beacon_state(
         fixed_parts.push(i);
     }
 
+    // append a length cap to justification bits before serializing
     let justification_bits: Vec<u8> =
-        length_cap_to_justification_bits(&state.justification_bits().as_ssz_bytes());
+        length_cap_to_bitvector(&state.justification_bits().as_ssz_bytes());
     for i in justification_bits.iter() {
         fixed_parts.push(*i);
     }
     sizes.insert("justification_bits", justification_bits.len());
 
+    // previous_justified_checkpoint is also a container
     let mut previous_justified_checkpoint: Vec<u8> = vec![];
     previous_justified_checkpoint.append(
         &mut state
@@ -289,6 +295,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(*i);
     }
 
+    // and we need the sizes of the fields for deserialization
     sizes.insert(
         "previous_justified_checkpoint",
         previous_justified_checkpoint.len(),
@@ -311,6 +318,7 @@ pub fn serialize_beacon_state(
             .len(),
     );
 
+    // current_justified_checkpoint is also a container
     let mut current_justified_checkpoint: Vec<u8> = vec![];
     current_justified_checkpoint.append(
         &mut state
@@ -325,6 +333,8 @@ pub fn serialize_beacon_state(
     for i in current_justified_checkpoint.iter() {
         fixed_parts.push(*i);
     }
+
+    // and we need the sizes of the fields for deserialization
     sizes.insert(
         "current_justified_checkpoint",
         current_justified_checkpoint.len(),
@@ -348,6 +358,7 @@ pub fn serialize_beacon_state(
             .len(),
     );
 
+    // finalized checkpoint is a container
     let mut finalized_checkpoint: Vec<u8> = vec![];
     finalized_checkpoint.append(&mut state.finalized_checkpoint().epoch.as_ssz_bytes());
     finalized_checkpoint.append(&mut state.finalized_checkpoint().root.as_ssz_bytes());
@@ -355,6 +366,7 @@ pub fn serialize_beacon_state(
     for i in finalized_checkpoint.iter() {
         fixed_parts.push(*i);
     }
+    // and we need the sizes of the fields for deserialization
     sizes.insert("finalized_checkpoint", finalized_checkpoint.len());
     sizes.insert(
         "finalized_checkpoint_epoch",
@@ -387,6 +399,7 @@ pub fn serialize_beacon_state(
         fixed_parts.push(i);
     }
 
+    // current_sync_committee is a container
     let mut current_sync_committee: Vec<u8> = vec![];
     current_sync_committee.append(
         &mut state
@@ -406,6 +419,7 @@ pub fn serialize_beacon_state(
     for i in current_sync_committee.iter() {
         fixed_parts.push(*i);
     }
+    // and we need the sizes for dseserialization
     sizes.insert("current_sync_committee", current_sync_committee.len());
     sizes.insert(
         "current_sync_committee_pubkeys",
@@ -426,6 +440,7 @@ pub fn serialize_beacon_state(
             .len(),
     );
 
+    // next_sync_comittee is a container
     let mut next_sync_committee: Vec<u8> = vec![];
     next_sync_committee.append(&mut state.next_sync_committee().unwrap().pubkeys.as_ssz_bytes());
     next_sync_committee.append(
@@ -439,6 +454,7 @@ pub fn serialize_beacon_state(
     for i in next_sync_committee.iter() {
         fixed_parts.push(*i);
     }
+    // and we need the sizes for deserialization
     sizes.insert("next_sync_committee", next_sync_committee.len());
     sizes.insert(
         "next_sync_committee_pubkeys",
@@ -517,21 +533,19 @@ pub fn serialize_beacon_state(
     return (serialized_state, sizes, offsets);
 }
 
-pub fn length_cap_to_justification_bits(justification_bits: &Vec<u8>) -> Vec<u8> {
+pub fn length_cap_to_bitvector(var: &Vec<u8>) -> Vec<u8> {
     // JUSTIFICATION BITS
     // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
-    let mut bits = BitVec::from_bytes(justification_bits);
+    let mut bits = BitVec::from_bytes(var);
     assert!(bits.len() % 4 == 0);
     bits.push(true);
 
-    let mut bytes: Vec<u8> = bits.to_bytes();
-    let pad = [0u8; 1];
-    while bytes.len() < 4 {
-        bytes.extend_from_slice(&pad)
-    }
+    let bytes: Vec<u8> = bits.to_bytes();
+
     // justification bit length should be 4 bytes
     // zero vector is illegal (should never occur here bc of length cap)
     assert!(bytes.iter().sum::<u8>() > 0);
+
     return bytes;
 }
 

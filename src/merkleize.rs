@@ -1,10 +1,12 @@
 extern crate hex;
+use crate::constants::BYTES_PER_LENGTH_OFFSET;
 use bit_vec::BitVec;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 // control flow here is:
 // 1) generate chunks() (returns vec of root hashes, one per leaf)
+//       calls out to get_var_bytes() which grabs the bytes representing each var from the serialized state
 //       calls out to pack (N chunks of 32 bytes where N == power of 2)
 //           if var is justification_bits the length cap is removed first
 //           calls out to pad_to_32 (if single chunk needs padding)
@@ -24,7 +26,7 @@ pub fn generate_chunks(
 ) -> Vec<u8> {
     // sha256 hashes vecs of bytes from serialized object
     // mixes in length data as per spec and
-    // returns vec of 64 leaf hashes
+    // returns vec of leaves
 
     let mut chunks: Vec<u8> = vec![];
     let mut start_idx: usize = 0;
@@ -73,12 +75,11 @@ pub fn generate_chunks(
 
         if key == &"justification_bits" {
             bit_flag = true;
-
         } else {
             bit_flag = false;
         }
 
-        let var = deserialize_var(start_idx, sizes[key], &serialized_state, &bit_flag);
+        let var = get_var_bytes(start_idx, sizes[key], &serialized_state, &bit_flag);
         assert_eq!(var.len(), sizes[key]);
 
         let mut root: Vec<u8> = vec![];
@@ -91,13 +92,13 @@ pub fn generate_chunks(
             root = hash_tree_root(&var);
         }
         // mix in length data, push root to chunks vec
-        let mut root: Vec<u8> = mix_in_length_data(&root, &sizes[key]);
+        root = mix_in_length_data(&root, &sizes[key]);
         chunks.append(&mut root);
 
         // advance start_idx to the end of the var just deserialized
         // or end of offset for a variable-length var
         if offsets.contains_key(key) {
-            start_idx += 4;
+            start_idx += BYTES_PER_LENGTH_OFFSET;
         } else {
             start_idx += sizes[key];
         };
@@ -295,6 +296,10 @@ pub fn merkle_tree(chunks: Vec<u8>) -> Vec<Vec<u8>> {
     let mut chunks_temp: Vec<Vec<u8>> = chunks.clone();
     let mut tree: Vec<Vec<u8>> = vec![];
 
+    for i in chunks_temp.iter() {
+        tree.push(i.to_vec());
+    }
+
     while chunks_temp.len() > 1 {
         let mut new_nodes: Vec<Vec<u8>> = vec![];
 
@@ -312,6 +317,10 @@ pub fn merkle_tree(chunks: Vec<u8>) -> Vec<Vec<u8>> {
         }
     }
 
+    // want root at start of vec to
+    // enable generalized index calcs
+    tree.reverse();
+
     return tree;
 }
 
@@ -319,12 +328,9 @@ pub fn hash_tree_root(leaf: &Vec<u8>) -> Vec<u8> {
     assert!(leaf.len() >= 32);
     assert_eq!(leaf.len() % 32, 0);
 
-    // first, if single leaf just hash it
+    // first, if single leaf just return it
     if leaf.len() == 32 {
-        let mut hasher = Sha256::new();
-        hasher.update(leaf);
-        let result = hasher.finalize_reset();
-        return result.to_vec();
+        return leaf.to_vec();
     } else {
         // here we deal with multiple chunks
         // by recursively hashing pairs
@@ -383,7 +389,9 @@ pub fn mix_in_length_data(root: &Vec<u8>, length: &usize) -> Vec<u8> {
     root
 }
 
-pub fn deserialize_var(
+// gets the bytes representing a specific var out of the
+// ssz serialized state object
+pub fn get_var_bytes(
     start: usize,
     length: usize,
     serialized_state: &Vec<u8>,
@@ -396,20 +404,19 @@ pub fn deserialize_var(
     // if the var is justification_bits then remove the end cap before continuing
     if *bit_flag {
         return remove_cap_from_justification_bits(&var_as_bytes.to_vec());
-    }
-    else{
-    //check lengths are consistent
-    assert!(stop - start == length);
-    assert!(
-        stop <= serialized_state.len(),
-        "stop {:?} exceeds end of ssz obj",
-        stop
-    );
-    assert_eq!(length, stop - start);
-    assert_eq!(length, var_as_bytes.len());
+    } else {
+        //check lengths are consistent
+        assert!(stop - start == length);
+        assert!(
+            stop <= serialized_state.len(),
+            "stop {:?} exceeds end of ssz obj",
+            stop
+        );
+        assert_eq!(length, stop - start);
+        assert_eq!(length, var_as_bytes.len());
 
-    return var_as_bytes.to_vec();
-}
+        return var_as_bytes.to_vec();
+    }
 }
 
 pub fn pack(var_as_bytes: Vec<u8>) -> Vec<u8> {
@@ -543,6 +550,7 @@ pub fn pad_chunks_to_power2(var: &[u8]) -> Vec<u8> {
 pub fn remove_cap_from_justification_bits(justification_bits: &Vec<u8>) -> Vec<u8> {
     let mut bits: BitVec = BitVec::from_bytes(&justification_bits);
     println!("\njustification bits with length-cap\n{:?}\n", bits);
+    // iterate backwards and remove 1st "true"
     for i in (0..bits.len()).rev() {
         if bits[i] == true {
             println!(

@@ -7,6 +7,7 @@ pub mod light_client_types;
 pub mod merkleize;
 pub mod node_discovery;
 pub mod serialize;
+pub mod merkle_proofs;
 extern crate hex;
 // use light_client_types::LightClientStore;
 
@@ -32,10 +33,20 @@ fn main() {
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
     let chunks = merkleize::generate_chunks(&serialized_state, &sizes, &offsets);
     let tree: Vec<Vec<u8>> = merkleize::merkle_tree(chunks);
+    
+    let sync_comm_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
+    assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
 
-    println!(
-        "CALCULATED STATE_ROOT: 0x{:?}\n",
-        hex::encode(&tree[tree.len() - 1])
-    );
+    // let finalized_root_branch: Vec<Vec<u8>> =merkle_proofs::get_branch(&tree, constants::FINALIZED_ROOT_INDEX);
+    // assert_eq!(finalized_root_branch.len() as u64, constants::FINALIZED_ROOT_INDEX_FLOOR_LOG2);
+
+    println!("nodes in sync_comm_branch:\n");
+    for i in sync_comm_branch.iter(){
+        println!("{:?}", hex::encode(&i));
+    }
+
+    println!("\nCALCULATED STATE_ROOT: 0x{:?}\n", hex::encode(&sync_comm_branch[0]));
     println!("DOWNLOADED STATE ROOT: {:?}\n", block.state_root());
+
+    // println!("predicted next sync comm root {:?}", hex::encode(&tree[55]));
 }
