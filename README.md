@@ -23,3 +23,5 @@ For light-client dev make sure the testnet BN's are running altair. The defaults
 ## finality_branch and sync_committee_branch
 
 see SSZ_notes.md
+
+

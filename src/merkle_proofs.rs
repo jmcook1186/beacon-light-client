@@ -1,8 +1,5 @@
 extern crate hex;
 use bit_vec::BitVec;
-use bitvec::prelude::*;
-use sha2::{Digest, Sha256};
-use std::collections::HashMap;
 use math::round;
 
 

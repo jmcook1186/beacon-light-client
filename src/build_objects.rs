@@ -1,7 +1,11 @@
 use std::format;
 extern crate hex;
-use crate::light_client_types::LightClientSnapshot;
+use crate::light_client_types::{LightClientSnapshot, LightClientUpdate};
 use eth2::types::*;
+use crate::merkle_proofs;
+use crate::serialize;
+use crate::merkleize;
+use crate:: constants;
 
 pub fn get_state(state_id: &str, endpoint_prefix: &str) -> BeaconState<MainnetEthSpec> {
     let state_suffix: String = format!("v2/debug/beacon/states/{}", &state_id);
@@ -64,39 +68,39 @@ pub fn get_header(state_id: &str, endpoint_prefix: &str) -> BlockHeaderData {
     return header;
 }
 
-// pub fn get_update(
-//     state: BeaconState<MainnetEthSpec>,
-//     block: SignedBeaconBlock<MainnetEthSpec>,
-//     finality_header: BlockHeaderData,
-// ) -> LightClientUpdate {
-//     // sync_aggregate comes straight from the block body - this is the source of sync_committee_bits
-//     let aggregate: SyncAggregate<MainnetEthSpec> =
-//         block.message().body().sync_aggregate().unwrap().to_owned();
+pub fn build_update(
+    state: BeaconState<MainnetEthSpec>,
+    block: SignedBeaconBlock<MainnetEthSpec>,
+    finality_header: BlockHeaderData,
+) -> LightClientUpdate {
 
-//     // serialize the beacon_state and chunk it into 32 byte leaves.
-//     // merklize the chunked vector, return the merkle tree and the depth of the tree
-//     let leaves: Vec<H256> = serialize::to_h256_chunks(&state);
-//     let (tree, tree_depth) = serialize::get_merkle_tree(&leaves);
 
-//     // get branches (vectors of hashes at nodes connecting leaf to root)
-//     let sync_comm_branch: Vec<H256> = serialize::get_branch(
-//         &tree,
-//         NEXT_SYNC_COMMITTEE_INDEX as usize,
-//         tree_depth as usize,
-//     );
-//     let finality_branch: Vec<H256> =
-//         serialize::get_branch(&tree, FINALIZED_ROOT_INDEX as usize, tree_depth as usize);
+    // ssz serialize the state object, pad and hash each field, build merkle tree
+    let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
+    let chunks = merkleize::generate_chunks(&serialized_state, &sizes, &offsets);
+    let tree: Vec<Vec<u8>> = merkleize::merkle_tree(chunks);
+    
+    let sync_comm_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
+    assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
 
-//     // build update object
-//     let update = LightClientUpdate {
-//         header: state.latest_block_header().to_owned(),
-//         next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
-//         next_sync_committee_branch: sync_comm_branch,
-//         finality_header: finality_header,
-//         finality_branch: finality_branch,
-//         sync_committee_bits: aggregate.sync_committee_bits,
-//         fork_version: state.fork().current_version,
-//     };
+    let finality_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
+    assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
+    
+    // sync_aggregate comes straight from the block body - this is the source of sync_committee_bits
+    let aggregate: SyncAggregate<MainnetEthSpec> =
+        block.message().body().sync_aggregate().unwrap().to_owned();
 
-//     return update;
-// }
+
+    // build update object
+    let update = LightClientUpdate {
+        header: state.latest_block_header().to_owned(),
+        next_sync_committee: state.next_sync_committee().unwrap().to_owned(),
+        next_sync_committee_branch: sync_comm_branch,
+        finality_header: finality_header,
+        finality_branch: finality_branch,
+        sync_committee_bits: aggregate.sync_committee_bits,
+        fork_version: state.fork().current_version,
+    };
+
+    return update;
+}
