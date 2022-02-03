@@ -108,6 +108,7 @@ pub fn generate_chunks(
 }
 
 pub fn hash_tree_root_container(key: &str, var: Vec<u8>, sizes: &HashMap<&str, usize>) -> Vec<u8> {
+    
     if key == "fork" {
         println!("HASHING FORK");
         let mut fork_previous_version = pack(var[0..sizes["fork_previous_version"]].to_vec());
@@ -566,3 +567,4 @@ pub fn remove_cap_from_justification_bits(justification_bits: &Vec<u8>) -> Vec<u
     println!("\njustification bits as bytes\n{:?}\n", bytes);
     return bytes;
 }
+

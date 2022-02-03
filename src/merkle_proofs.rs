@@ -15,7 +15,7 @@ use math::round;
 // whose branch we want to return
 
 pub fn get_branch(tree: &Vec<Vec<u8>>, tree_idx: u64)->Vec<Vec<u8>>{
-
+    
     let mut branch: Vec<Vec<u8>> = vec![];
     let branch_idxs: Vec<u64> = get_branch_indices(tree_idx);
     for i in branch_idxs.iter(){

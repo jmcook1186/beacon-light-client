@@ -80,6 +80,7 @@ pub fn build_update(
     let chunks = merkleize::generate_chunks(&serialized_state, &sizes, &offsets);
     let tree: Vec<Vec<u8>> = merkleize::merkle_tree(chunks);
     
+    
     let sync_comm_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
     assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
 
