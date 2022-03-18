@@ -1,18 +1,18 @@
 use std::format;
 extern crate hex;
-use crate::constants;
 use crate::light_client_types::{LightClientSnapshot, LightClientUpdate};
-use crate::merkle_proofs;
-use crate::merkleize;
-use crate::serialize;
 use eth2::types::*;
+use crate::merkle_proofs;
+use crate::serialize;
+use crate::merkleize;
+use crate:: constants;
 
 pub fn get_state(state_id: &str, endpoint_prefix: &str) -> BeaconState<MainnetEthSpec> {
     let state_suffix: String = format!("v2/debug/beacon/states/{}", &state_id);
 
     let endpoint = String::from(endpoint_prefix) + &state_suffix;
 
-    println!("{:?}", endpoint);
+    println!("{:?}",endpoint);
     let client = reqwest::blocking::ClientBuilder::new()
         .timeout(None)
         .build()
@@ -75,33 +75,28 @@ pub fn build_update(
     block: SignedBeaconBlock<MainnetEthSpec>,
     finality_header: BlockHeaderData,
 ) -> LightClientUpdate {
+
     // ssz serialize the state object, pad and hash each field, build merkle tree
     let (serialized_state, sizes, offsets) = serialize::serialize_beacon_state(&state);
     let chunks = merkleize::generate_chunks(&serialized_state, &sizes, &offsets);
     let tree: Vec<Vec<u8>> = merkleize::merkle_tree(chunks);
-
-    let sync_comm_branch: Vec<Vec<u8>> =
-        merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
-    assert_eq!(
-        sync_comm_branch.len() as u64,
-        constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2
-    );
+    
+    
+    let sync_comm_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
+    assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
 
     // let finality_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::FINALIZED_ROOT_INDEX);
     // assert_eq!(sync_comm_branch.len() as u64, constants::FINALIZED_ROOT_INDEX_FLOOR_LOG2);
 
     // TODO:
     // temporary branch until merklization is fixed!!
-    let finality_branch: Vec<Vec<u8>> =
-        merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
-    assert_eq!(
-        sync_comm_branch.len() as u64,
-        constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2
-    );
-
+    let finality_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
+    assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
+    
     // sync_aggregate comes straight from the block body - this is the source of sync_committee_bits
     let aggregate: SyncAggregate<MainnetEthSpec> =
         block.message().body().sync_aggregate().unwrap().to_owned();
+
 
     // build update object
     let update = LightClientUpdate {
