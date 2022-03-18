@@ -11,6 +11,8 @@ pub fn get_state(state_id: &str, endpoint_prefix: &str) -> BeaconState<MainnetEt
     let state_suffix: String = format!("v2/debug/beacon/states/{}", &state_id);
 
     let endpoint = String::from(endpoint_prefix) + &state_suffix;
+
+    println!("{:?}",endpoint);
     let client = reqwest::blocking::ClientBuilder::new()
         .timeout(None)
         .build()
@@ -84,6 +86,11 @@ pub fn build_update(
     let sync_comm_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
     assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
 
+    // let finality_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::FINALIZED_ROOT_INDEX);
+    // assert_eq!(sync_comm_branch.len() as u64, constants::FINALIZED_ROOT_INDEX_FLOOR_LOG2);
+
+    // TODO:
+    // temporary branch until merklization is fixed!!
     let finality_branch: Vec<Vec<u8>> = merkle_proofs::get_branch(&tree, constants::NEXT_SYNC_COMMITTEE_INDEX);
     assert_eq!(sync_comm_branch.len() as u64, constants::NEXT_SYNC_COMMITTEE_INDEX_FLOOR_LOG2);
     

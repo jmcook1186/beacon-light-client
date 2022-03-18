@@ -82,15 +82,17 @@ pub fn generate_chunks(
         let var = get_var_bytes(start_idx, sizes[key], &serialized_state, &bit_flag);
         assert_eq!(var.len(), sizes[key]);
 
-        let mut root: Vec<u8> = vec![];
+        // let mut root: Vec<u8> = vec![];
+        let var: Vec<u8> = pack(var);
+        let mut root = hash_tree_root(&var);
         // if var is a container then get the container root
-        if containers.contains(key) {
-            let var: Vec<u8> = pack(var);
-            root = hash_tree_root_container(key, var, sizes);
-        } else {
-            let var: Vec<u8> = pack(var);
-            root = hash_tree_root(&var);
-        }
+        // if containers.contains(key) {
+        //     let var: Vec<u8> = pack(var);
+        //     root = hash_tree_root_container(key, var, sizes);
+        // } else {
+        //     let var: Vec<u8> = pack(var);
+        //     root = hash_tree_root(&var);
+        // }
         // mix in length data, push root to chunks vec
         root = mix_in_length_data(&root, &sizes[key]);
         chunks.append(&mut root);

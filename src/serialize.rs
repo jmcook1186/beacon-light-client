@@ -1,7 +1,7 @@
 use eth2::types::*;
 extern crate hex;
-use crate::constants::{BITS_PER_BYTE, BYTES_PER_LENGTH_OFFSET};
-use bit_vec::BitVec;
+use crate::constants::*;
+use bit_vec::{BitVec};
 use ssz::Encode;
 use std::collections::HashMap;
 
@@ -18,6 +18,7 @@ pub fn serialize_beacon_state(
     let mut offsets = HashMap::new();
 
     println!("*** SSZ SERIALIZING STATE OBJECT ***");
+
     // make hashmap of var lengths to pass to merklize
 
     for i in state.genesis_time().as_ssz_bytes().iter() {
@@ -518,8 +519,9 @@ pub fn serialize_beacon_state(
     serialized_state.append(&mut fixed_parts);
     serialized_state.append(&mut variable_parts);
 
-    // OPTIONALLY PRINT SERIALIZED OBJECT PROPERTIES
-    // println!("\n*** SERIALIZED OBJECT PROPERTIES ***\n");
+    assert_eq!(serialized_state.len(), sizes["total_length"], "NEW TEST 1 FAILS: SERIALIZE LINE 522");
+    assert_eq!(serialized_state.len(), state.as_ssz_bytes().len(), "NEW TEST 2 FAILS: SERIALIZE LINE 523");
+
 
     println!("\nSIZE (IN BYTES) OF EACH VAR:\n");
     for (key, value) in sizes.iter() {
@@ -533,12 +535,41 @@ pub fn serialize_beacon_state(
     return (serialized_state, sizes, offsets);
 }
 
+
 pub fn length_cap_to_bitvector(var: &Vec<u8>) -> Vec<u8> {
     // JUSTIFICATION BITS
     // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
     let mut bits = BitVec::from_bytes(var);
     assert!(bits.len() % 4 == 0);
-    bits.push(true);
+
+    println!("{:?}", bits);
+
+
+    for i in (0..bits.len()).rev(){
+        
+        if bits[i] == true{
+
+            let idx = bits.len()-i;
+            
+            if i < bits.len(){
+                bits.set(idx+1, true);
+            }
+            else{
+                bits.push(true);
+            }
+
+            break
+        }
+        else if i==0{
+
+            bits.set(0, true);
+        
+            }
+        }
+    
+    
+        //bits.push(true);
+    println!("{:?}", bits);
 
     let bytes: Vec<u8> = bits.to_bytes();
 

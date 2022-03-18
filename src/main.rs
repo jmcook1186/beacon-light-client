@@ -15,7 +15,7 @@ extern crate hex;
 fn main() {
     // set basic vars and get api key from secret
     let (node_id, _node_number) = node_discovery::get_random_node_id(10, 8000);
-    let state_id = "finalized";
+    let state_id = "head";
     let endpoint_prefix: String = format!("http://localhost:{}/eth/", &node_id);
 
     // download beacon_state and make a snapshot
@@ -28,8 +28,7 @@ fn main() {
 
     let update: LightClientUpdate = build_objects::build_update(state, block, header);
 
-
-    for i in update.finality_branch.iter(){
-        println!("{:?}", hex::encode(&i));
-    }
+    // for i in update.finality_branch.iter(){
+    //     println!("{:?}", hex::encode(&i));
+    // }
 }
