@@ -1,14 +1,14 @@
+use eth2::types::BlockHeaderData;
 use std::format;
-use eth2::types::{BlockHeaderData};
 pub mod build_objects;
 pub mod constants;
 pub mod http_requests;
 pub mod light_client_types;
-use light_client_types::{LightClientUpdate, LightClientSnapshot};
+use light_client_types::{LightClientSnapshot, LightClientUpdate};
+pub mod merkle_proofs;
 pub mod merkleize;
 pub mod node_discovery;
 pub mod serialize;
-pub mod merkle_proofs;
 extern crate hex;
 // use light_client_types::LightClientStore;
 
@@ -24,7 +24,7 @@ fn main() {
 
     // download a beacon block and extract the body
     let block = build_objects::get_block(&state_id, &endpoint_prefix);
-    let header: BlockHeaderData = build_objects::get_header(&state_id, &endpoint_prefix); 
+    let header: BlockHeaderData = build_objects::get_header(&state_id, &endpoint_prefix);
 
     let update: LightClientUpdate = build_objects::build_update(state, block, header);
 

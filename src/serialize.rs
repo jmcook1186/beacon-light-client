@@ -1,7 +1,7 @@
 use eth2::types::*;
 extern crate hex;
 use crate::constants::*;
-use bit_vec::{BitVec};
+use bit_vec::BitVec;
 use ssz::Encode;
 use std::collections::HashMap;
 
@@ -519,9 +519,16 @@ pub fn serialize_beacon_state(
     serialized_state.append(&mut fixed_parts);
     serialized_state.append(&mut variable_parts);
 
-    assert_eq!(serialized_state.len(), sizes["total_length"], "NEW TEST 1 FAILS: SERIALIZE LINE 522");
-    assert_eq!(serialized_state.len(), state.as_ssz_bytes().len(), "NEW TEST 2 FAILS: SERIALIZE LINE 523");
-
+    assert_eq!(
+        serialized_state.len(),
+        sizes["total_length"],
+        "NEW TEST 1 FAILS: SERIALIZE LINE 522"
+    );
+    assert_eq!(
+        serialized_state.len(),
+        state.as_ssz_bytes().len(),
+        "NEW TEST 2 FAILS: SERIALIZE LINE 523"
+    );
 
     println!("\nSIZE (IN BYTES) OF EACH VAR:\n");
     for (key, value) in sizes.iter() {
@@ -535,42 +542,35 @@ pub fn serialize_beacon_state(
     return (serialized_state, sizes, offsets);
 }
 
-
 pub fn length_cap_to_bitvector(var: &Vec<u8>) -> Vec<u8> {
     // JUSTIFICATION BITS
     // BITVECTOR REQUIRES AN ADDITIONAL 1 APPENDED TO THE END AS LENGTH CAP
     let mut bits = BitVec::from_bytes(var);
     assert!(bits.len() % 4 == 0);
 
-    println!("{:?}", bits);
+    // go backwards through justification bits
+    // until we find a "true". Then flip
+    // the next bit to true. [00010] -> [00011]
+    // if there are no true's make 0 index true.
+    for i in (0..bits.len()).rev() {
+        if bits[i] == true {
+            let idx = bits.len() - i;
 
-
-    for i in (0..bits.len()).rev(){
-        
-        if bits[i] == true{
-
-            let idx = bits.len()-i;
-            
-            if i < bits.len(){
-                bits.set(idx+1, true);
-            }
-            else{
+            if i < bits.len() {
+                bits.set(idx + 1, true);
+            } else {
                 bits.push(true);
             }
-
-            break
-        }
-        else if i==0{
-
+            // break so we only ever
+            // add one length cap
+            break;
+        } else if i == 0 {
+            // if we reach the 0 index
             bits.set(0, true);
-        
-            }
         }
-    
-    
-        //bits.push(true);
-    println!("{:?}", bits);
+    }
 
+    // convert to bytes
     let bytes: Vec<u8> = bits.to_bytes();
 
     // justification bit length should be 4 bytes
@@ -579,87 +579,3 @@ pub fn length_cap_to_bitvector(var: &Vec<u8>) -> Vec<u8> {
 
     return bytes;
 }
-
-// pub fn to_h256_chunks(state: &BeaconState<MainnetEthSpec>) -> Vec<H256> {
-//     // small inner func for converting vec<u8> to vecArray<u8>
-//     // i.e. make vec length fixed
-//     fn vector_as_u8_32_array(vector: Vec<u8>) -> [u8; 32] {
-//         let mut arr = [0u8; 32];
-//         for (place, element) in arr.iter_mut().zip(vector.iter()) {
-//             *place = *element;
-//         }
-//         arr
-//     }
-
-//     //ssz serialize the state object
-//     let serialized_state = state.as_ssz_bytes();
-
-//     // each element in serialized_state is a u8, i.e. 1 byte
-//     // chunks of 32 elements = 32 bytes as expected for merkleization
-//     let chunked = serialized_state.chunks(32);
-//     println!("chunked length: {:?}", chunked.len());
-
-//     // convert each 32 byte chunk of the serialized object into H256 type
-//     // and append each to vec leaves
-//     let mut leaves: Vec<H256> = vec![];
-//     for chunk in chunked {
-//         let chunk_vec = chunk.to_vec();
-//         let chunk_fixed: [u8; 32] = vector_as_u8_32_array(chunk_vec);
-//         let leaf = H256::from(chunk_fixed);
-//         leaves.push(leaf);
-//     }
-//     return leaves;
-// }
-
-// pub fn get_merkle_tree(leaves: &Vec<H256>) -> (MerkleTree, usize) {
-//     // // get tree depth and number of leaves to pass to merkle func
-//     let n_leaves: f64 = leaves.len() as f64;
-
-//     let tree_depth: usize = ((n_leaves.floor().log2()) + 1.0) as usize;
-
-//     let merkle_tree = MerkleTree::create(&leaves, tree_depth);
-
-//     return (merkle_tree, tree_depth);
-// }
-
-// pub fn get_branch_indices(leaf_index: usize) -> Vec<usize> {
-//     // function takes leaf index and returns
-//     // the indexes for all sibling and parent roots
-//     // required for a merkle proof for the leaf
-//     // NB not actually implemented in main() bc
-//     // superseded by Lighthouse's get_proof() func
-
-//     let mut branch_indices: Vec<usize> = vec![];
-
-//     // initialize branch with the leaf
-//     branch_indices.push(leaf_index as usize);
-
-//     // while the last item in the list is not the state root
-//     // sequence of pushes is: leaf, sibling, parent, sibling, parent...
-//     // i.e. up a lovel, get hash partner, up a level, get hash partner...
-//     while branch_indices.last_mut().unwrap().to_owned() as u64 > 1 {
-//         // index of the leaf and its left and right neighbours
-//         let leaf = branch_indices.last_mut().unwrap().to_owned() as u64;
-//         let left = branch_indices.last_mut().unwrap().to_owned() as u64 - 1;
-//         let right = branch_indices.last_mut().unwrap().to_owned() as u64 + 1;
-
-//         // if the index is even we always want its right neighbour
-//         // to hash with. If odd, always left neighbour.
-//         if branch_indices.last_mut().unwrap().to_owned() as u64 % 2 == 0 {
-//             branch_indices.push(right as usize)
-//         } else {
-//             branch_indices.push(left as usize)
-//         }
-
-//         // the parent is always floor of index/2.
-//         branch_indices.push(math::round::floor((leaf / 2) as f64, 0) as usize);
-//     }
-
-//     return branch_indices;
-// }
-
-// pub fn get_branch(tree: &MerkleTree, leaf_index: usize, tree_depth: usize) -> Vec<H256> {
-//     let (_leaf, branch) = tree.generate_proof(leaf_index, tree_depth);
-
-//     return branch;
-// }

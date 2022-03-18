@@ -14,7 +14,9 @@ First spin up a local testnet using Ganache as the execution layer (clone lighth
 
 ## Current Functionality
 
-The light client randomly selects a Beacon node to connect to from the N nodes spun up as part of a local Lighthouse testnet (N can be set in /lighthouse/scripts/local_testnetvars.env). The server then creates an initial store object by parsing data from the `beacon_block_body` and `beacon_state` objects associated with the most recent finalized block requested from the Beacon Node. Then, the same process is then repeated for the head of the chain, with new data used to update `store`.
+The light client randomly selects a Beacon node to connect to from the N nodes spun up as part of a local Lighthouse testnet (N can be set in /lighthouse/scripts/local_testnet/vars.env). The server then retrieves the `beacon_state` from the node, SSZ serializes it, merkelizes it, and calculates the necessary proofs. it then uses the proofs and other state information to construct light client updates.
+
+The next steps are to serve those updates over http and construct a client that retrieves the updates and processes them in each slot.
 
 ## Dev Notes
 
@@ -25,3 +27,5 @@ For light-client dev make sure the testnet BN's are running altair. The defaults
 see SSZ_notes.md
 
 
+NB:
+Merkleization needs updating - currently does not deserialize into correctly sized objects
