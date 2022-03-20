@@ -147,6 +147,8 @@ pub fn hash_tree_root_container(key: &str, var: Vec<u8>, sizes: &HashMap<&str, u
         chunks.append(&mut block_hash);
 
         let chunks = pack(chunks);
+        
+        
         let root = hash_tree_root(&chunks);
 
         return root;
@@ -322,7 +324,11 @@ pub fn merkle_tree(chunks: Vec<u8>) -> Vec<Vec<u8>> {
     // want root at start of vec to
     // enable generalized index calcs
     tree.reverse();
-
+    for i in tree.iter(){
+    
+        println!("CALCULATED STATE ROOT: 0x{:?}", hex::encode(&i));
+    
+    }
     return tree;
 }
 

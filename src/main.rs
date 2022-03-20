@@ -10,7 +10,6 @@ pub mod merkleize;
 pub mod node_discovery;
 pub mod serialize;
 extern crate hex;
-// use light_client_types::LightClientStore;
 
 fn main() {
     // set basic vars and get api key from secret
@@ -20,15 +19,21 @@ fn main() {
 
     // download beacon_state and make a snapshot
     let state = build_objects::get_state(&state_id, &endpoint_prefix);
+
     let _snapshot = build_objects::make_snapshot(&state);
 
     // download a beacon block and extract the body
     let block = build_objects::get_block(&state_id, &endpoint_prefix);
+    
     let header: BlockHeaderData = build_objects::get_header(&state_id, &endpoint_prefix);
-
+    
+    
+    println!("DOWNLOADED STATE ROOT: {:?}", &header);
     let update: LightClientUpdate = build_objects::build_update(state, block, header);
-
+    
+    
     // for i in update.finality_branch.iter(){
     //     println!("{:?}", hex::encode(&i));
     // }
 }
+

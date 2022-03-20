@@ -22,6 +22,9 @@ The next steps are to serve those updates over http and construct a client that 
 
 For light-client dev make sure the testnet BN's are running altair. The defaults in vars.env set the altair hard fork to block 18million-ish. Set it to 0, then the altair endpoints will be available immediately.
 
+Make sure you are using the lts version of node, the latest version breaks the local testnet (ganache fails to run). 
+`nvm use --lts`
+
 ## finality_branch and sync_committee_branch
 
 see SSZ_notes.md

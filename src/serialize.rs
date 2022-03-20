@@ -530,15 +530,16 @@ pub fn serialize_beacon_state(
         "NEW TEST 2 FAILS: SERIALIZE LINE 523"
     );
 
-    println!("\nSIZE (IN BYTES) OF EACH VAR:\n");
-    for (key, value) in sizes.iter() {
-        println!("{:?}: {:?}", key, value);
-    }
-    println!("\nVARIABLE-LENGTH VAR OFFSETS:\n");
-    for (key, value) in offsets.iter() {
-        println!("{:?}: {:?}", key, value);
-    }
+    // println!("\nSIZE (IN BYTES) OF EACH VAR:\n");
+    // for (key, value) in sizes.iter() {
+    //     println!("{:?}: {:?}", key, value);
+    // }
+    // println!("\nVARIABLE-LENGTH VAR OFFSETS:\n");
+    // for (key, value) in offsets.iter() {
+    //     println!("{:?}: {:?}", key, value);
+    // }
 
+    
     return (serialized_state, sizes, offsets);
 }
 
