@@ -17,3 +17,6 @@ pub const HISTORICAL_ROOTS_LIMIT: usize = 16777216;
 pub const SYNC_COMMITTEE_SIZE: usize = 512;
 pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: usize = 256;
 pub const EPOCHS_PER_SLASHINGS_VECTOR: usize = 8192;
+pub const EPOCHS_PER_ETH1_VOTING_PERIOD: usize = 64;
+pub const SLOTS_PER_EPOCH: usize = 32;
+pub const EPOCHS_PER_HISTORICAL_VECTOR: usize = 65536;

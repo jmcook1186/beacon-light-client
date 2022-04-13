@@ -539,7 +539,6 @@ pub fn serialize_beacon_state(
     //     println!("{:?}: {:?}", key, value);
     // }
 
-    
     return (serialized_state, sizes, offsets);
 }
 
