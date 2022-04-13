@@ -24,16 +24,16 @@ fn main() {
 
     // download a beacon block and extract the body
     let block = build_objects::get_block(&state_id, &endpoint_prefix);
-    
+
     let header: BlockHeaderData = build_objects::get_header(&state_id, &endpoint_prefix);
-    
-    
-    println!("DOWNLOADED STATE ROOT: {:?}", &header);
+
+    println!(
+        "DOWNLOADED STATE ROOT: {:?}",
+        &header.header.message.state_root
+    );
     let update: LightClientUpdate = build_objects::build_update(state, block, header);
-    
-    
+
     // for i in update.finality_branch.iter(){
     //     println!("{:?}", hex::encode(&i));
     // }
 }
-
