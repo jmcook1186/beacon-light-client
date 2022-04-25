@@ -2,7 +2,9 @@
 
 *** WARNING This light client is still in very early development! ***
 
-The initial aim of this repository is to build a prototype Beacon Chain light client in Rust following the following specs: https://github.com/ethereum/annotated-spec/blob/master/altair/sync-protocol.md#minimal-light-client. The initial aim is to have a working prototype that tracks finalized blocks, then later expanding the scope to track the head of the chain. 
+The initial aim of this repository is to build a prototype Beacon Chain light client in Rust following the following specs: https://github.com/ethereum/annotated-spec/blob/master/altair/sync-protocol.md#minimal-light-client. 
+
+This version is **NOT YET FUNCTIONAL** even as a prototype. The calculated state root does not match the downloaded state root, indicating a bug in my merkleization code that I am yet to find and fix. The light client objects are not currently served at all - running this code just builds the light client objects for the latest finalized blocks and reports some information from them to the console. The next steps, after fixing the merkleization functions, are to serve the light client objects over http so that they can be requested by a light client.
 
 ## Design
 
@@ -25,10 +27,3 @@ For light-client dev make sure the testnet BN's are running altair. The defaults
 Make sure you are using the lts version of node, the latest version breaks the local testnet (ganache fails to run). 
 `nvm use --lts`
 
-## finality_branch and sync_committee_branch
-
-see SSZ_notes.md
-
-
-NB:
-Merkleization needs updating - currently does not deserialize into correctly sized objects

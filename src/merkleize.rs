@@ -83,49 +83,12 @@ pub fn generate_chunks(
             bit_flag = false;
         }
 
+       
+       
         let var = get_var_bytes(start_idx, sizes[key], &serialized_state, &bit_flag);
         assert_eq!(var.len(), sizes[key]);
 
-        // check lengths of vars are consistent with spec
-        if key == &"block_roots" {
-            assert_eq!(
-                var.len(),
-                SLOTS_PER_HISTORICAL_ROOT * 32,
-                "block_root length inconsistent"
-            );
-        } else if key == &"state_roots" {
-            assert_eq!(
-                var.len(),
-                SLOTS_PER_HISTORICAL_ROOT * 32,
-                "state_root length inconsistent"
-            )
-        }
-        // else if key==&"historical_roots" {
-        //     assert_eq!(var.len(), HISTORICAL_ROOTS_LIMIT*32, "historical_root length inconsistent")
-        // }
-        // else if key==&"eth1_data_votes" {
-        //     assert_eq!(var.len(), 72 * EPOCHS_PER_ETH1_VOTING_PERIOD*SLOTS_PER_EPOCH, "Eth1Data length inconsistent")
-        // }
-        // else if key==&"validators" {
-        //     assert_eq!(var.len(), 32* VALIDATOR_REGISTRY_LIMIT, "validator length inconsistent")
-        // }
-        // else if key==&"balances" {
-        //     assert_eq!(var.len(), 8* VALIDATOR_REGISTRY_LIMIT, "balances length inconsistent")
-        // }
-        else if key == &"randao_mixes" {
-            assert_eq!(
-                var.len(),
-                32 * EPOCHS_PER_HISTORICAL_VECTOR,
-                "randao_mixes length inconsistent"
-            )
-        } else if key == &"slashings" {
-            assert_eq!(
-                var.len(),
-                8 * EPOCHS_PER_SLASHINGS_VECTOR,
-                "slashings length inconsistent"
-            )
-        }
-        // let mut root: Vec<u8> = vec![];
+
         let var: Vec<u8> = pack(var);
         let mut root = hash_tree_root(&var);
         //if var is a container then get the container root
@@ -136,6 +99,7 @@ pub fn generate_chunks(
             let var: Vec<u8> = pack(var);
             root = hash_tree_root(&var);
         }
+
 
         // mix in length data, push root to chunks vec
         // only if the var type is list
@@ -624,3 +588,4 @@ pub fn remove_cap_from_justification_bits(justification_bits: &Vec<u8>) -> Vec<u
     println!("\njustification bits as bytes\n{:?}\n", bytes);
     return bytes;
 }
+
